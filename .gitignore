@@ -1,0 +1,4 @@
+*.auo
+*.o
+*.res
+!/fzgx_smr_ks.auo
