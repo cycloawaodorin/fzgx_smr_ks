@@ -47,10 +47,10 @@ GetOutputPluginTable(void)
 	return &output_plugin_table;
 }
 
-static constexpr const int width = 19;
-static constexpr const int height = 26;
-static constexpr const int window_width = 19*4;
-static constexpr const int window_byte_width = 19*4*3;
+constexpr static const int width = 19;
+constexpr static const int height = 26;
+constexpr static const int window_width = 19*4;
+constexpr static const int window_byte_width = 19*4*3;
 static int dib_width;
 static const char *separators = " ,\t";
 static const char *digits = "0123456789 ";
