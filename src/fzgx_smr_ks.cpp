@@ -1,6 +1,8 @@
 #include <windows.h>
 #include <cmath>
 #include <iterator>
+#include <memory>
+#include <thread>
 #include "output.h"
 #include "resource_definition.h"
 #include "version.h"
@@ -22,7 +24,8 @@ static struct {
 	bool dialog_eval;
 	float dialog_eval_limit;
 	bool dialog_always;
-} config = {536, 413, true, true, 0, Separator::SPACE, true, true, 0.95f, false};
+	int num_th;
+} config = {536, 413, true, true, 0, Separator::SPACE, true, true, 0.95f, false, 0};
 
 static const TCHAR *auo_filename = "fzgx_smr_ks.auo";
 #define PLUGIN_NAME "SMR for F-ZERO GX"
@@ -32,7 +35,7 @@ OUTPUT_PLUGIN_TABLE output_plugin_table = {
 	const_cast<TCHAR *>(PLUGIN_NAME),
 	const_cast<TCHAR *>(filefilter),
 	const_cast<TCHAR *>(PLUGIN_NAME " " VERSION " by KAZOON"),
-	func_init,
+	nullptr,
 	func_exit,
 	func_output,
 	func_config,
@@ -61,12 +64,26 @@ static struct {
 	bool cnn_low, unmatch;
 } dialog_flags;
 static char est_str[5]={0, 0, 0, 0, 0};
+static std::size_t n_th=std::thread::hardware_concurrency();
+
+template <class T>
+static void
+parallel_do(void (*f)(T*, std::size_t, std::size_t), T *p, std::size_t n)
+{
+	std::unique_ptr<std::thread[]> threads(new std::thread[n]);
+	for (std::size_t i=0; i<n; i++) {
+		threads[i] = std::thread(f, p, i, n);
+	}
+	for (std::size_t i=0; i<n; i++) {
+		threads[i].join();
+	}
+}
 
 class Cnn {
 private:
 #include "weights0.cpp"
 	void
-	conv0(const unsigned char *src, int s)
+	conv0(const unsigned char *src)
 	{
 		for (std::size_t i=0; i<std::size(inter0); i++) {
 			for (std::size_t j=0; j<std::size(inter0[i]); j++) {
@@ -75,7 +92,7 @@ private:
 					for (std::size_t di=0; di<std::size(Conv0K); di++) {
 						for (std::size_t dj=0; dj<std::size(Conv0K[di]); dj++) {
 							for (std::size_t c=0; c<3; c++) {
-								inter0[i][j][k] += static_cast<float>(src[(height-i-di)*s+(j+dj)*3+2-static_cast<int>(c)])*Conv0K[di][dj][c][k];
+								inter0[i][j][k] += static_cast<float>(src[(height-i-di)*dib_width+(j+dj)*3+2-static_cast<int>(c)])*Conv0K[di][dj][c][k];
 							}
 						}
 					}
@@ -162,40 +179,39 @@ private:
 		}
 	}
 	void
-	dense1(int i)
+	dense1()
 	{
 		float sum = 0.0f;
 		for (std::size_t j=0; j<11; j++) {
-			output[i][j] = Dense1B[j];
+			output[j] = Dense1B[j];
 			for (std::size_t k=0; k<std::size(Dense1K); k++) {
-				output[i][j] += inter4[k]*Dense1K[k][j];
+				output[j] += inter4[k]*Dense1K[k][j];
 			}
-			output[i][j] = std::exp(output[i][j]);
-			sum += output[i][j];
+			output[j] = std::exp(output[j]);
+			sum += output[j];
 		}
-		for (auto& e : output[i]) {
+		for (auto& e : output) {
 			e /= sum;
 		}
 	}
 public:
-	float output[4][11];
+	float output[11];
 	void
-	predict(const unsigned char *src, int dibw, int i)
+	predict(const unsigned char *src)
 	{
-		conv0(src, dibw);
+		conv0(src);
 		conv1();
 		pooling();
 		conv2();
 		dense0();
-		dense1(i);
+		dense1();
 	}
 };
-static Cnn *cnn;
 class Dnn {
 private:
 #include "weights1.cpp"
 	void
-	conv0(const unsigned char *src, int s)
+	conv0(const unsigned char *src)
 	{
 		for (std::size_t i=0; i<std::size(inter0); i++) {
 			for (std::size_t j=0; j<std::size(inter0[i]); j++) {
@@ -204,7 +220,7 @@ private:
 					for (std::size_t di=0; di<std::size(Conv0K); di++) {
 						for (std::size_t dj=0; dj<std::size(Conv0K[di]); dj++) {
 							for (std::size_t c=0; c<3; c++) {
-								inter0[i][j][k] += static_cast<float>(src[(height-i-di*2)*s+(j+dj)*3+2-static_cast<int>(c)])*Conv0K[di][dj][c][k];
+								inter0[i][j][k] += static_cast<float>(src[(height-i-di*2)*dib_width+(j+dj)*3+2-static_cast<int>(c)])*Conv0K[di][dj][c][k];
 							}
 						}
 					}
@@ -291,35 +307,57 @@ private:
 		}
 	}
 	void
-	dense1(int i)
+	dense1()
 	{
 		float sum = 0.0f;
 		for (std::size_t j=0; j<11; j++) {
-			output[i][j] = Dense1B[j];
+			output[j] = Dense1B[j];
 			for (std::size_t k=0; k<std::size(Dense1K); k++) {
-				output[i][j] += inter4[k]*Dense1K[k][j];
+				output[j] += inter4[k]*Dense1K[k][j];
 			}
-			output[i][j] = std::exp(output[i][j]);
-			sum += output[i][j];
+			output[j] = std::exp(output[j]);
+			sum += output[j];
 		}
-		for (auto& e : output[i]) {
+		for (auto& e : output) {
 			e /= sum;
 		}
 	}
 public:
-	float output[4][11];
+	float output[11];
 	void
-	predict(const unsigned char *src, int dibw, int i)
+	predict(const unsigned char *src)
 	{
-		conv0(src, dibw);
+		conv0(src);
 		conv1();
 		pooling();
 		conv2();
 		dense0();
-		dense1(i);
+		dense1();
 	}
 };
-static Dnn *dnn;
+
+class Nets {
+public:
+	const unsigned char *src;
+	Cnn cnn[4];
+	Dnn dnn[4];
+	static void
+	invoke(Nets *p, std::size_t i, std::size_t n)
+	{
+		const std::size_t start = (i*8)/n;
+		const std::size_t end = ((i+1)*8)/n;
+		for (std::size_t j=start; j<end; j++) {
+			std::size_t j_=j%4;
+			const unsigned char *s = p->src + (j_*width*3);
+			if (j<4) {
+				p->cnn[j_].predict(s);
+			} else {
+				p->dnn[j_].predict(s);
+			}
+		}
+	}
+};
+static std::unique_ptr<Nets> nn(new Nets());
 
 static void
 correct_values()
@@ -464,25 +502,24 @@ set_estimates(const unsigned char *org)
 {
 	dialog_flags.cnn_low = false;
 	dialog_flags.unmatch = false;
+	nn->src = org+((oip->h-config.start_y-height)*dib_width+config.start_x*3);
+	parallel_do(Nets::invoke, nn.get(), n_th);
 	for (int i=0; i<4; i++) {
-		const unsigned char *src = org+(oip->h-config.start_y-height)*dib_width+(config.start_x+i*width)*3;
-		cnn->predict(src, dib_width, i);
-		dnn->predict(src, dib_width, i);
 		int c_max_j=0, d_max_j=0, max_j=0;
-		float c_max=cnn->output[i][c_max_j], d_max=dnn->output[i][d_max_j];
+		float c_max=nn->cnn[i].output[c_max_j], d_max=nn->dnn[i].output[d_max_j];
 		float max=c_max*d_max;
 		for (int j=1; j<11; j++) {
-			float now = cnn->output[i][j];
+			float now = nn->cnn[i].output[j];
 			if (c_max<now) {
 				c_max_j = j;
 				c_max = now;
 			}
-			now = dnn->output[i][j];
+			now = nn->dnn[i].output[j];
 			if (d_max<now) {
 				d_max_j = j;
 				d_max = now;
 			}
-			now *= cnn->output[i][j];
+			now *= nn->cnn[i].output[j];
 			if (max<now) {
 				max_j = j;
 				max = now;
@@ -544,24 +581,9 @@ func_correct_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 }
 
 BOOL
-func_init()
-{
-	cnn = new Cnn();
-	if (cnn==nullptr) {
-		return FALSE;
-	}
-	dnn = new Dnn();
-	if (dnn==nullptr) {
-		return FALSE;
-	}
-	return TRUE;
-}
-
-BOOL
 func_exit()
 {
-	delete cnn;
-	delete dnn;
+	nn.reset(nullptr);
 	return TRUE;
 }
 
@@ -609,24 +631,31 @@ func_output(OUTPUT_INFO *oip_org)
 	return TRUE;
 }
 
-
 // コンフィグ関係
 static Separator sep_now=Separator::NONE;
-static void set_offset_enableness(HWND hdlg, BOOL val) {
+static void
+set_offset_enableness(HWND hdlg, BOOL val)
+{
 	EnableWindow(GetDlgItem(hdlg, IDC_OFFSET), val);
 	EnableWindow(GetDlgItem(hdlg, IDC_SPACE), val);
 	EnableWindow(GetDlgItem(hdlg, IDC_COMMA), val);
 	EnableWindow(GetDlgItem(hdlg, IDC_TAB), val);
 }
-static void set_dialog_enableness(HWND hdlg, BOOL val) {
+static void
+set_dialog_enableness(HWND hdlg, BOOL val)
+{
 	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL), val);
 	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL_LIM), val);
 }
-static void set_dialog_enableness_ex(HWND hdlg, BOOL val, BOOL val2) {
+static void
+set_dialog_enableness_ex(HWND hdlg, BOOL val, BOOL val2)
+{
 	set_dialog_enableness(hdlg, val&&val2);
 	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_ALWAYS), val);
 }
-static void init_dialog(HWND hdlg) {
+static void
+init_dialog(HWND hdlg)
+{
 	TCHAR buf[16];
 	wsprintf(buf, "%d", config.start_x);
 	SetDlgItemText(hdlg, IDC_X, buf);
@@ -655,8 +684,24 @@ static void init_dialog(HWND hdlg) {
 	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL_LIM), config.dialog_eval);
 	SendMessage(GetDlgItem(hdlg, IDC_DIALOG_ALWAYS), BM_SETCHECK, config.dialog_always, 0);
 	set_dialog_enableness(hdlg, !config.dialog_always);
+	wsprintf(buf, "%d", config.num_th);
+	SetDlgItemText(hdlg, IDC_NTH, buf);
 }
-static void setup_config(HWND hdlg) {
+static void
+n_th_correction()
+{
+	int nt = config.num_th;
+	if ( nt <= 0 ) {
+		nt += std::thread::hardware_concurrency();
+		if ( nt <= 0 ) {
+			nt = 1;
+		}
+	}
+	n_th = static_cast<std::size_t>(nt);
+}
+static void
+setup_config(HWND hdlg)
+{
 	TCHAR buf[16];
 	GetDlgItemText(hdlg, IDC_X, buf, sizeof(buf)-1);
 	config.start_x = atoi(buf);
@@ -672,8 +717,13 @@ static void setup_config(HWND hdlg) {
 	GetDlgItemText(hdlg, IDC_DIALOG_EVAL_LIM, buf, sizeof(buf)-1);
 	config.dialog_eval_limit = static_cast<float>(atof(buf));
 	config.dialog_always = SendDlgItemMessage(hdlg, IDC_DIALOG_ALWAYS, BM_GETCHECK, 0, 0);
+	GetDlgItemText(hdlg, IDC_NTH, buf, sizeof(buf)-1);
+	config.num_th = atoi(buf);
+	n_th_correction();
 }
-static LRESULT CALLBACK func_config_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam) {
+static LRESULT CALLBACK
+func_config_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
+{
 	if (umsg == WM_INITDIALOG) {
 		init_dialog(hdlg);
 		return TRUE;
@@ -708,21 +758,28 @@ static LRESULT CALLBACK func_config_proc(HWND hdlg, UINT umsg, WPARAM wparam, LP
 	}
 	return FALSE;
 }
-BOOL func_config(HWND hwnd, HINSTANCE dll_hinst) {
+BOOL
+func_config(HWND hwnd, HINSTANCE dll_hinst)
+{
 	DialogBox(dll_hinst, "CONFIG", hwnd, reinterpret_cast<DLGPROC>(func_config_proc));
 	return TRUE;
 }
-int func_config_get(void *data, int size) {
+int
+func_config_get(void *data, int size)
+{
 	if (data) {
 		memcpy(data, &config, sizeof(config));
 		return sizeof(config);
 	}
 	return 0;
 }
-int func_config_set(void *data, int size) {
+int
+func_config_set(void *data, int size)
+{
 	if (size != sizeof(config)) {
 		return 0;
 	}
 	memcpy(&config, data, size);
+	n_th_correction();
 	return size;
 }
