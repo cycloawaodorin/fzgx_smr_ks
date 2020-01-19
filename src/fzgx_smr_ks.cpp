@@ -22,7 +22,7 @@ static struct {
 	bool dialog_eval;
 	float dialog_eval_limit;
 	bool dialog_always;
-} config = {536, 413, true, true, 0, Separator::SPACE, true, true, 0.99f, false};
+} config = {536, 413, true, true, 0, Separator::SPACE, true, true, 0.95f, false};
 
 static const TCHAR *auo_filename = "fzgx_smr_ks.auo";
 #define PLUGIN_NAME "SMR for F-ZERO GX"
@@ -191,6 +191,135 @@ public:
 	}
 };
 static Cnn *cnn;
+class Dnn {
+private:
+#include "weights1.cpp"
+	void
+	conv0(const unsigned char *src, int s)
+	{
+		for (std::size_t i=0; i<std::size(inter0); i++) {
+			for (std::size_t j=0; j<std::size(inter0[i]); j++) {
+				for (std::size_t k=0; k<std::size(inter0[i][j]); k++) {
+					inter0[i][j][k] = Conv0B[k];
+					for (std::size_t di=0; di<std::size(Conv0K); di++) {
+						for (std::size_t dj=0; dj<std::size(Conv0K[di]); dj++) {
+							for (std::size_t c=0; c<3; c++) {
+								inter0[i][j][k] += static_cast<float>(src[(height-i-di*2)*s+(j+dj)*3+2-static_cast<int>(c)])*Conv0K[di][dj][c][k];
+							}
+						}
+					}
+					if ( inter0[i][j][k] < 0.0f ) {
+						inter0[i][j][k] = 0.0f;
+					}
+				}
+			}
+		}
+	}
+	void
+	conv1()
+	{
+		for (std::size_t i=0; i<std::size(inter1); i++) {
+			for (std::size_t j=0; j<std::size(inter1[i]); j++) {
+				for (std::size_t k=0; k<std::size(inter1[i][j]); k++) {
+					inter1[i][j][k] = Conv1B[k];
+					for (std::size_t di=0; di<std::size(Conv1K); di++) {
+						for (std::size_t dj=0; dj<std::size(Conv1K[di]); dj++) {
+							for (std::size_t c=0; c<std::size(Conv1K[di][dj]); c++) {
+								inter1[i][j][k] += inter0[i+di*2][j+dj][c]*Conv1K[di][dj][c][k];
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	void
+	pooling()
+	{
+		for (std::size_t i=0; i<std::size(inter2); i++) {
+			for (std::size_t j=0; j<std::size(inter2[i]); j++) {
+				for (std::size_t k=0; k<std::size(inter2[i][j]); k++) {
+					inter2[i][j][k] = 0.0f;
+					for (std::size_t di=0; di<4; di++) {
+						for (std::size_t dj=0; dj<4; dj++) {
+							if ( inter2[i][j][k] < inter1[i*4+di][j*4+dj][k] ) {
+								inter2[i][j][k] = inter1[i*4+di][j*4+dj][k];
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	void
+	conv2()
+	{
+		for (std::size_t i=0; i<std::size(inter3); i++) {
+			for (std::size_t j=0; j<std::size(inter3[i]); j++) {
+				for (std::size_t k=0; k<std::size(inter3[i][j]); k++) {
+					inter3[i][j][k] = Conv2B[k];
+					for (std::size_t di=0; di<2; di++) {
+						for (std::size_t dj=0; dj<2; dj++) {
+							for (std::size_t c=0; c<std::size(Conv2K[di][dj]); c++) {
+								inter3[i][j][k] += inter2[i*2+di][j*2+dj][c]*Conv2K[di][dj][c][k];
+							}
+						}
+					}
+					if ( inter3[i][j][k] < 0.0f ) {
+						inter3[i][j][k] = 0.0f;
+					}
+				}
+			}
+		}
+	}
+	void
+	dense0()
+	{
+		for (std::size_t i=0; i<std::size(Dense0B); i++) {
+			inter4[i] = Dense0B[i];
+			std::size_t j=0;
+			for (std::size_t a=0; a<std::size(inter3); a++) {
+				for (std::size_t b=0; b<std::size(inter3[a]); b++) {
+					for (std::size_t c=0; c<std::size(inter3[a][b]); c++) {
+						inter4[i] += inter3[a][b][c]*Dense0K[j++][i];
+					}
+				}
+			}
+			if ( inter4[i] < 0.0f ) {
+				inter4[i] = 0.0f;
+			}
+		}
+	}
+	void
+	dense1(int i)
+	{
+		float sum = 0.0f;
+		for (std::size_t j=0; j<11; j++) {
+			output[i][j] = Dense1B[j];
+			for (std::size_t k=0; k<std::size(Dense1K); k++) {
+				output[i][j] += inter4[k]*Dense1K[k][j];
+			}
+			output[i][j] = std::exp(output[i][j]);
+			sum += output[i][j];
+		}
+		for (auto& e : output[i]) {
+			e /= sum;
+		}
+	}
+public:
+	float output[4][11];
+	void
+	predict(const unsigned char *src, int dibw, int i)
+	{
+		conv0(src, dibw);
+		conv1();
+		pooling();
+		conv2();
+		dense0();
+		dense1(i);
+	}
+};
+static Dnn *dnn;
 
 static void
 correct_values()
@@ -338,16 +467,32 @@ set_estimates(const unsigned char *org)
 	for (int i=0; i<4; i++) {
 		const unsigned char *src = org+(oip->h-config.start_y-height)*dib_width+(config.start_x+i*width)*3;
 		cnn->predict(src, dib_width, i);
-		int max_j=0;
-		float max=cnn->output[i][max_j];
+		dnn->predict(src, dib_width, i);
+		int c_max_j=0, d_max_j=0, max_j=0;
+		float c_max=cnn->output[i][c_max_j], d_max=dnn->output[i][d_max_j];
+		float max=c_max*d_max;
 		for (int j=1; j<11; j++) {
-			if (max<cnn->output[i][j]) {
+			float now = cnn->output[i][j];
+			if (c_max<now) {
+				c_max_j = j;
+				c_max = now;
+			}
+			now = dnn->output[i][j];
+			if (d_max<now) {
+				d_max_j = j;
+				d_max = now;
+			}
+			now *= cnn->output[i][j];
+			if (max<now) {
 				max_j = j;
-				max = cnn->output[i][j];
+				max = now;
 			}
 		}
 		if (config.dialog_eval && max < config.dialog_eval_limit) {
 			dialog_flags.cnn_low = true;
+		}
+		if (c_max_j != d_max_j) {
+			dialog_flags.unmatch = true;
 		}
 		est_str[i] = digits[max_j];
 	}
@@ -405,6 +550,10 @@ func_init()
 	if (cnn==nullptr) {
 		return FALSE;
 	}
+	dnn = new Dnn();
+	if (dnn==nullptr) {
+		return FALSE;
+	}
 	return TRUE;
 }
 
@@ -412,6 +561,7 @@ BOOL
 func_exit()
 {
 	delete cnn;
+	delete dnn;
 	return TRUE;
 }
 
