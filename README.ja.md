@@ -1,21 +1,19 @@
 # SMR for F-ZERO GX
-An output plugin which read speedometer numbers of F-ZERO GX and output them into text-based format.
+F-ZERO GX のスピードメータを読み取り，テキストとして出力する，AviUtlの出力プラグイン．
 
-## Installation
-Copy `fzgx_smr_ks.auo` file into the root or plugins directory of AviUtl. If you are not familiar with AviUtl, read `USAGE.md` for the instruction.
+## インストール
+AviUtl のルートまたは plugins ディレクトリに fzgx_smr_ks.auo をコピーするか，シンボリックリンクを作成する．
 
-## Building
-You do not need to build for using this plugin. If you want to build yourself, enter the `src` directory and execute `make`. The Makefile is written for using g++ on MSYS2. You should rewrite Makefile for environments other than MSYS2.
+## ビルド
+MSYS2上で src ディレクトリに入り，`make`．
+MSYS2上の gcc 以外でのコンパイルは想定されていないため，必要なら`Makefile`を参照の上，対応願う．
 
-## Notice
-The input video should be 720x480 and F-ZERO GX should be set for 16:9 monitor. If the video is for 4:3 monitor or resized to other than 720x480 resolation, you must resize the input video before using this plugin. The brief instruction is written in the `Resizing` section of `USAGE.md`
+## 使用上の注意
+入力の動画としては，録画したままの 720x480 の映像であり，「ワイド画面 (16:9)」用であることを想定している．4:3 用の出力映像を録画した場合や，拡縮を掛けてしまった後の動画のスピードメータを読み取りたい場合は，スピードメータ部分の画像サイズが 16:9 用の 720x480 の映像と同じになるように拡縮し，後述のウィンドウ位置を適切に設定する必要がある．
 
-## Setting
-### ウィンドウ / Position of the window
-Indicate the left-top coordinate of the window which covers the numbers of the speedometer. The default value will be appropriate. You can correct the value in the preview dialog box if needed.
-
-### 出力時にプレビューを表示 / Use the preview dialog box
-The preview dialog box will be shown if this item is checked. In the dialog box, you correct the window position
+## 設定項目
+### ウィンドウ
+スピードメータの数字部分の左上の座標を指定する．基本的にはデフォルトでよいはず．必要に応じ，次のプレビューダイアログで調整する．
 
 ### 出力時にプレビューを表示
 出力開始時にウィンドウの調整のためのプレビューダイアログを表示する．ダイアログでは，右下のプレビュー画像に 4 桁の数字が，右上の見本画像と同じような位置に表示されるようにウィンドウの座標を調整する．ボタンで 1 ずつ動かしてもよいし，数値を直接入力してもよい．フレーム番号を変えるとプレビューで表示する画像のフレームを変更でき，出力ファイルには影響しない．
