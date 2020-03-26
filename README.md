@@ -15,10 +15,10 @@ The input video should be 720x480 and F-ZERO GX should be set for 16:9 monitor. 
 Specify the left-top coordinate of the window which covers the numbers of the speedometer. The default value will be appropriate. You can adjust the value in the preview dialog box if needed.
 
 ### 出力時にプレビューを表示 / Use the preview dialog box
-Show the preview dialog box. In the dialog box, you may adjust the window position so that the 4-digit number is displayed in the lower-right preview image in the same position as the upper right sample image. You can change the coordinate one by one with the +/- buttons, or you can enter the  value directly. Changing the frame number changes the frame of the preview image, and does not affect the output file.
+Show the preview dialog box at the start of output. In the dialog box, you may adjust the window position so that the 4-digit number is displayed in the lower-right preview image in the same position as the upper right sample image. You can change the coordinate one by one with the +/- buttons, or you can enter the  value directly. Changing the frame number changes the frame of the preview image, and does not affect the output file.
 
 ### スレッド数 / The number of threads
-Specify the number of threads used in this plugin. If the specifed number is less or equal to 0, the specified number + the number of logical cores will be used.
+Specify the number of threads used in this plugin. If the specifed number is less than or equal to 0, the specified number + the number of logical cores will be used.
 
 ### 競合時ダイアログで人力確認 / Use the confirmation dialog box when conflict happens
 Show the confirmation dialog box when the models output conflicting values. If you checked "評価値x以下でも確認 / Use the dialog box when the evaluation value is less than or equal to X," the confirmation dialog box will also be shown when the max evaluation value (confidence) is less thean or equal to the specified value. The evaluation value is between 0 and 1. If you checked "常に確認 / Always use the dialog box," the confirmation dialog box will be shown for every frame.
