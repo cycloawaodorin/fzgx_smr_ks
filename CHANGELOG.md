@@ -1,4 +1,4 @@
-# 更新履歴
+# Change log
 
 ## 1.0.0 2019/01/19
-- 初版．
+- The first version.
