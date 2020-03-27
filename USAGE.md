@@ -2,7 +2,7 @@
 This document provides a brief instruction to use "SMR for F-ZERO GX," an output plugin of AviUtl.
 
 ## AviUtl
-AviUtl is a video filtering tool for Windows. It is not so difficult to use "SMR for F-ZERO GX." However, AviUtl is complex because of its multifunctionality and only Japanese language is available. Thus, this section presents basic functions of AviUtl.
+AviUtl is a video filtering tool for Windows. It is not so difficult to use "SMR for F-ZERO GX." However, AviUtl is complex because of its multifunctionality and only Japanese language is available. Thus, this section explains basic functions of AviUtl.
 
 ### Downloading and Installation
 AviUtl can be downloaded from http://spring-fragrance.mints.ne.jp/aviutl/.
