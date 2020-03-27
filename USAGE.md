@@ -1,8 +1,8 @@
 # Usage
-This document provide a brief instruction to use "SMR for F-ZERO GX," an output plugin of AviUtl.
+This document provides a brief instruction to use "SMR for F-ZERO GX," an output plugin of AviUtl.
 
 ## AviUtl
-AviUtl is a video filtering tool for Windows. It is not so difficult to use "SMR for F-ZERO GX." However, AviUtl is complex because of its multifunctionality and only Japanese language is available. Thus, we present basic functions of AviUtl.
+AviUtl is a video filtering tool for Windows. It is not so difficult to use "SMR for F-ZERO GX." However, AviUtl is complex because of its multifunctionality and only Japanese language is available. Thus, this section presents basic functions of AviUtl.
 
 ### Downloading and Installation
 AviUtl can be downloaded from http://spring-fragrance.mints.ne.jp/aviutl/.
@@ -11,7 +11,7 @@ AviUtl can be downloaded from http://spring-fragrance.mints.ne.jp/aviutl/.
 
 Version 1.10 is the latest (as of 27-Mar-2020), however, version 1.00 seems to be more stable. Both versions are suitable for "SMR for F-ZERO GX."
 
-Just unzip the downloaded archive for installation.
+Just unzip the downloaded archive file for installation.
 
 ### Installing Plugins
 Make `plugins` directory at the same hierarchy of aviutl.exe. Copy AUO (output plugins), AUI (input plugins) or AUF (filter plugins) files into the `plugins` directory.
@@ -27,7 +27,7 @@ Make `plugins` directory at the same hierarchy of aviutl.exe. Copy AUO (output p
 Drag-and-drop the video file onto the `aviutl.exe` window. Without input plugins, AviUtl can only open AVI files. Thus, we recommend to install [L-SMASH Works](#l-smash-works) to open such as MP4 files.
 
 ### Setting Output Frame Range
-Use slider or frame-by-frame move button to change the current frame. Set the start and end frames by the buttons. The buttons are located at right-bottom of the aviutl.exe window. Frames before the start frame and frames after the end frame will not be output.
+Use slider or frame-by-frame move button to change the current frame. Set the start and end frames by buttons for that. The buttons are located at right-bottom of the aviutl.exe window. Frames before the start frame and frames after the end frame will not be output.
 
 ![frame_controller](https://raw.githubusercontent.com/cycloawaodorin/fzgx_smr_ks/image/frame_control.png)
 
@@ -51,7 +51,7 @@ See the [Setting section of README.md](README.md#setting) for detail.
 
 ![setting_db](https://raw.githubusercontent.com/cycloawaodorin/fzgx_smr_ks/image/setting.png)
 
-### Preview Dialog Box
+### <a name="preview_dialog_box"></a>Preview Dialog Box
 See the [Preview dialog box section of README.md](README.md#preview) for detail.
 
 ![preview_db](https://raw.githubusercontent.com/cycloawaodorin/fzgx_smr_ks/image/preview.png)
