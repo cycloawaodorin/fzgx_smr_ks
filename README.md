@@ -8,7 +8,7 @@ Copy `fzgx_smr_ks.auo` file into the root or plugins directory of AviUtl. If you
 You do not need to build for using this plugin. If you want to build yourself, enter the `src` directory and execute `make`. The Makefile is written for using g++ on MSYS2. You may need to modify the Makefile if your environment is other than MSYS2.
 
 ## Notice
-The input video should be 720x480 and F-ZERO GX should be set for 16:9 monitors. If the video is for 4:3 monitors or resized to other than 720x480 resolution, you must resize the input video before using this plugin. The brief instruction is written in the [Resizing section of USAGE.md](USAGE.md#resizing).
+The input video should be 720x480 and F-ZERO GX should be set for 16:9 monitors. If the video is for 4:3 monitors or resized to other than 720x480 resolution, you must resize (into 540x480 for 4:3 monitors' video) the input video before using this plugin. The brief instruction is written in the [Resizing section of USAGE.md](USAGE.md#resizing).
 
 ## Setting
 ![aviutl](https://raw.githubusercontent.com/cycloawaodorin/fzgx_smr_ks/image/setting_raw.png)

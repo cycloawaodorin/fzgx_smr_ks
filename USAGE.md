@@ -9,7 +9,7 @@ AviUtl can be downloaded from http://spring-fragrance.mints.ne.jp/aviutl/.
 
 ![aviutl](https://raw.githubusercontent.com/cycloawaodorin/fzgx_smr_ks/image/aviutl.png)
 
-Version 1.10 is the latest (as of 27-Mar-2020), however, version 1.00 seems to be more stable. Both versions are suitable for "SMR for F-ZERO GX."
+Version 1.10 is the latest and it is best for "SMR for F-ZERO GX."  (as of 19-Oct-2021)
 
 Just unzip the downloaded archive file for installation.
 
@@ -71,8 +71,8 @@ If you want to extract speed values from videos other than 720x480 videos for 16
 ![clipping_resize_w](https://raw.githubusercontent.com/cycloawaodorin/fzgx_smr_ks/image/clipping_resize.png)
 
 ## Recommended Plugins
-### [L-SMASH Works](http://avisynth.nl/index.php/LSMASHSource)
-An input plugin which can read various video formats including MP4, MOV, QT, 3gp, 3g2, F4V and M4A.
+### [L-SMASH Works](https://github.com/Mr-Ojii/L-SMASH-Works-Auto-Builds/releases/latest)
+An input plugin which can read various video formats including MP4, MOV, QT, 3gp, 3g2, F4V and M4A. revXXX with largest XXX is recommended.
 
 ### <a href="http://www.marumo.ne.jp/auf/#lanczos3" name="lanczos3">Lanczos 3-lobed 拡大縮小</a>
 A filter plugin which can resize arbitrary resolutions.
