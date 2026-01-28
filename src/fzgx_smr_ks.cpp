@@ -3,9 +3,28 @@
 #include <iterator>
 #include <memory>
 #include <thread>
-#include "output.h"
+#include <string>
+#include <regex>
+#include "output2.hpp"
 #include "resource_definition.h"
-#include "version.h"
+#include "version.hpp"
+
+bool func_output( OUTPUT_INFO *oip );
+bool func_config( HWND hwnd,HINSTANCE hinst );
+void load_config(std::string &path);
+void save_config(std::string &path);
+
+constexpr static const DWORD YC48 = mmioFOURCC('Y', 'C', '4', '8');
+
+std::string lw2str(const LPCWSTR lpcwstr) {
+	if (!lpcwstr) return {};
+	int size_needed = WideCharToMultiByte(932, 0, lpcwstr, -1, nullptr, 0, nullptr, nullptr);
+	if (size_needed <= 0) return {};
+	std::string out(size_needed, 0);
+	int written = WideCharToMultiByte(932, 0, lpcwstr, -1, out.data(), size_needed, nullptr, nullptr);
+	if (written <= 0) return {};
+	return out;
+}
 
 enum class Separator {
 	SPACE=0,
@@ -27,28 +46,18 @@ static struct {
 	int num_th;
 } config = {536, 413, true, true, 0, Separator::SPACE, true, true, 0.95f, false, 0};
 
-static const TCHAR *auo_filename = "fzgx_smr_ks.auo";
-#define PLUGIN_NAME "SMR for F-ZERO GX"
-static const char *filefilter = "Text File (*.txt)\0*.txt\0CSV File (*.csv)\0*.csv\0All File (*.*)\0*.*\0";
+static const TCHAR *auo_filename = "fzgx_smr_ks.auo2";
+static const TCHAR *config_filename = "fzgx_smr_ks.config";
+#define PLUGIN_NAME L"SMR for F-ZERO GX"
 OUTPUT_PLUGIN_TABLE output_plugin_table = {
 	0,
-	const_cast<TCHAR *>(PLUGIN_NAME),
-	const_cast<TCHAR *>(filefilter),
-	const_cast<TCHAR *>(PLUGIN_NAME " " VERSION " by KAZOON"),
-	nullptr,
-	func_exit,
+	PLUGIN_NAME,
+	L"Text File (*.txt)\0*.txt\0CSV File (*.csv)\0*.csv\0All File (*.*)\0*.*\0",
+	(PLUGIN_NAME L" " VERSION L" by KAZOON"),
 	func_output,
 	func_config,
-	func_config_get,
-	func_config_set,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	nullptr
 };
-
-EXTERN_C OUTPUT_PLUGIN_TABLE __declspec(dllexport) * __stdcall
-GetOutputPluginTable(void)
-{
-	return &output_plugin_table;
-}
 
 constexpr static const int width = 19;
 constexpr static const int height = 26;
@@ -57,7 +66,7 @@ constexpr static const int window_byte_width = 19*4*3;
 static int dib_width;
 static const char *separators = " ,\t";
 static const char *digits = "0123456789 ";
-static BOOL cancel;
+static bool cancel;
 static OUTPUT_INFO *oip=nullptr;
 static int preview_frame=0;
 static struct {
@@ -65,6 +74,7 @@ static struct {
 } dialog_flags;
 static char est_str[5]={0, 0, 0, 0, 0};
 static std::size_t n_th=std::thread::hardware_concurrency();
+constexpr static const DWORD PMAX = 1023;
 
 template <class T>
 static void
@@ -378,24 +388,24 @@ correct_values()
 		preview_frame = oip->n-1;
 	}
 }
-// サイズに合わせていろいろ修正．出力不可なら TRUE を返す．
-static BOOL
+// サイズに合わせていろいろ修正．出力不可なら true を返す．
+static bool
 check_video_size()
 {
 	char buf[256];
 	if (oip->w < window_width || oip->h < height) {
 		wsprintf(buf, "動画は%dx%d以上のサイズが必要です(given:%dx%d)．\n出力を中止します．", window_width, height, oip->w, oip->h);
-		MessageBox(GetActiveWindow(), buf, NULL, MB_OK);
-		return TRUE;
+		MessageBox(GetActiveWindow(), buf, nullptr, MB_OK);
+		return true;
 	}
 	correct_values();
 	dib_width = (oip->w*3+3)&(~3);
-	return FALSE;
+	return false;
 }
 static void
 set_bmp(unsigned char *bmp, int frame)
 {
-	const unsigned char *org = static_cast<unsigned char *>(oip->func_get_video(frame));
+	const unsigned char *org = static_cast<unsigned char *>(oip->func_get_video(frame, YC48));
 	correct_values();
 	for (int y=0; y<height; y++) {
 		memcpy(bmp+y*window_byte_width,
@@ -420,7 +430,7 @@ func_preview_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 			{sizeof(BITMAPINFOHEADER), window_width, height, 1, 24, BI_RGB, 0, 0, 0, 0, 0},
 			{0, 0, 0, 0}
 		};
-		hBitmapD = CreateDIBSection(GetDC(hdlg), &bmi, DIB_RGB_COLORS, reinterpret_cast<void**>(&bmp), NULL, 0);
+		hBitmapD = CreateDIBSection(GetDC(hdlg), &bmi, DIB_RGB_COLORS, reinterpret_cast<void**>(&bmp), nullptr, 0);
 		return TRUE;
 	} else if (umsg==WM_DESTROY) {
 		preview_frame = 0;
@@ -431,7 +441,7 @@ func_preview_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 		char buf[16];
 		WORD lwparam = LOWORD(wparam);
 		if (lwparam == IDCANCEL ) {
-			cancel = TRUE;
+			cancel = true;
 			EndDialog(hdlg, LOWORD(wparam));
 		} else if (lwparam == IDOK) {
 			EndDialog(hdlg, LOWORD(wparam));
@@ -478,7 +488,7 @@ func_preview_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 		} else {
 			return FALSE;
 		}
-		InvalidateRect(hdlg, NULL, TRUE);
+		InvalidateRect(hdlg, nullptr, TRUE);
 		UpdateWindow(hdlg);
 		return TRUE;
 	} else if (umsg==WM_PAINT) {
@@ -546,7 +556,7 @@ func_correct_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 			{sizeof(BITMAPINFOHEADER), window_width, height, 1, 24, BI_RGB, 0, 0, 0, 0, 0},
 			{0, 0, 0, 0}
 		};
-		hBitmapD = CreateDIBSection(GetDC(hdlg), &bmi, DIB_RGB_COLORS, reinterpret_cast<void**>(&bmp), NULL, 0);
+		hBitmapD = CreateDIBSection(GetDC(hdlg), &bmi, DIB_RGB_COLORS, reinterpret_cast<void**>(&bmp), nullptr, 0);
 		return TRUE;
 	} else if (umsg==WM_DESTROY) {
 		DeleteObject(hBitmapD);
@@ -554,7 +564,7 @@ func_correct_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 	} else if (umsg==WM_COMMAND) {
 		WORD lwparam = LOWORD(wparam);
 		if (lwparam == IDCANCEL ) {
-			cancel = TRUE;
+			cancel = true;
 			EndDialog(hdlg, LOWORD(wparam));
 		} else if (lwparam == IDOK) {
 			GetDlgItemText(hdlg, IDC_EDIT, est_str, 5);
@@ -563,7 +573,7 @@ func_correct_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 		} else {
 			return FALSE;
 		}
-		InvalidateRect(hdlg, NULL, TRUE);
+		InvalidateRect(hdlg, nullptr, TRUE);
 		UpdateWindow(hdlg);
 		return TRUE;
 	} else if (umsg==WM_PAINT) {
@@ -580,43 +590,36 @@ func_correct_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 	return FALSE;
 }
 
-BOOL
-func_exit()
-{
-	nn.reset(nullptr);
-	return TRUE;
-}
-
-BOOL
+bool
 func_output(OUTPUT_INFO *oip_org)
 {
 	oip = oip_org;
 	if (check_video_size()) {
-		return TRUE;
+		return true;
 	}
 	
-	cancel = FALSE;
+	cancel = true;
 	if (config.preview) {
 		DialogBox(GetModuleHandle(auo_filename), "PREVIEW", GetActiveWindow(), reinterpret_cast<DLGPROC>(func_preview_proc));
 	}
 	if (cancel) {
-		return TRUE;
+		return true;
 	}
 	HANDLE fp;
-	fp = CreateFile(oip->savefile, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	if ( fp == INVALID_HANDLE_VALUE ) { return FALSE; }
+	fp = CreateFileA(lw2str(oip->savefile).c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+	if ( fp == INVALID_HANDLE_VALUE ) { return false; }
 	for ( int i=0; i<oip->n; i++ ) {
 		if (oip->func_is_abort()) { break; }
 		oip->func_rest_time_disp(i, oip->n);
 		DWORD dw;
 		char str[32];
-		set_estimates(static_cast<unsigned char *>(oip->func_get_video(i)));
+		set_estimates(static_cast<unsigned char *>(oip->func_get_video(i, YC48)));
 		if (config.dialog) {
 			if ( config.dialog_always || dialog_flags.unmatch || dialog_flags.cnn_low ) {
 				preview_frame = i;
 				DialogBox(GetModuleHandle(auo_filename), "CORRECT", GetActiveWindow(), reinterpret_cast<DLGPROC>(func_correct_proc));
 				if (cancel) {
-					CloseHandle(fp); return TRUE;
+					CloseHandle(fp); return true;
 				}
 			}
 		}
@@ -625,10 +628,10 @@ func_output(OUTPUT_INFO *oip_org)
 		} else {
 			wsprintf(str, "%s\n", est_str);
 		}
-		WriteFile(fp, str, static_cast<DWORD>(strlen(str)), &dw, NULL);
+		WriteFile(fp, str, static_cast<DWORD>(strlen(str)), &dw, nullptr);
 	}
 	CloseHandle(fp);
-	return TRUE;
+	return true;
 }
 
 // コンフィグ関係
@@ -636,22 +639,22 @@ static Separator sep_now=Separator::NONE;
 static void
 set_offset_enableness(HWND hdlg, LRESULT val)
 {
-	EnableWindow(GetDlgItem(hdlg, IDC_OFFSET), static_cast<WINBOOL>(val));
-	EnableWindow(GetDlgItem(hdlg, IDC_SPACE), static_cast<WINBOOL>(val));
-	EnableWindow(GetDlgItem(hdlg, IDC_COMMA), static_cast<WINBOOL>(val));
-	EnableWindow(GetDlgItem(hdlg, IDC_TAB), static_cast<WINBOOL>(val));
+	EnableWindow(GetDlgItem(hdlg, IDC_OFFSET), static_cast<BOOL>(val));
+	EnableWindow(GetDlgItem(hdlg, IDC_SPACE), static_cast<BOOL>(val));
+	EnableWindow(GetDlgItem(hdlg, IDC_COMMA), static_cast<BOOL>(val));
+	EnableWindow(GetDlgItem(hdlg, IDC_TAB), static_cast<BOOL>(val));
 }
 static void
 set_dialog_enableness(HWND hdlg, LRESULT val)
 {
-	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL), static_cast<WINBOOL>(val));
-	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL_LIM), static_cast<WINBOOL>(val));
+	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL), static_cast<BOOL>(val));
+	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL_LIM), static_cast<BOOL>(val));
 }
 static void
 set_dialog_enableness_ex(HWND hdlg, LRESULT val, LRESULT val2)
 {
 	set_dialog_enableness(hdlg, val&&val2);
-	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_ALWAYS), static_cast<WINBOOL>(val));
+	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_ALWAYS), static_cast<BOOL>(val));
 }
 static void
 init_dialog(HWND hdlg)
@@ -751,7 +754,7 @@ func_config_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 				!SendDlgItemMessage(hdlg, IDC_DIALOG_ALWAYS, BM_GETCHECK, 0, 0));
 		} else if (lwparam == IDC_DIALOG_EVAL) {
 			EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL_LIM),
-				static_cast<WINBOOL>(SendDlgItemMessage(hdlg, IDC_DIALOG_EVAL, BM_GETCHECK, 0, 0)));
+				static_cast<BOOL>(SendDlgItemMessage(hdlg, IDC_DIALOG_EVAL, BM_GETCHECK, 0, 0)));
 		} else if (lwparam == IDC_DIALOG_ALWAYS) {
 			set_dialog_enableness(hdlg, !SendDlgItemMessage(hdlg, IDC_DIALOG_ALWAYS, BM_GETCHECK, 0, 0));
 		}
@@ -759,28 +762,56 @@ func_config_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 	}
 	return FALSE;
 }
-BOOL
+bool
 func_config(HWND hwnd, HINSTANCE dll_hinst)
 {
+	TCHAR p_auo[PMAX+1];
+	GetModuleFileNameA(GetModuleHandle(auo_filename), p_auo, PMAX);
+	std::string p_config = std::regex_replace(p_auo, std::regex(auo_filename), config_filename);
+	
+	load_config(p_config);
 	DialogBox(dll_hinst, "CONFIG", hwnd, reinterpret_cast<DLGPROC>(func_config_proc));
-	return TRUE;
+	save_config(p_config);
+	
+	return true;
 }
-int
-func_config_get(void *data, int size)
+
+void
+load_config(std::string &path)
 {
-	if (data) {
-		memcpy(data, &config, sizeof(config));
-		return sizeof(config);
+	HANDLE fp;
+	fp = CreateFileA(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+	if ( fp == INVALID_HANDLE_VALUE ) { return; }
+	char buff[sizeof(config)+1];
+	DWORD read;
+	BOOL flg = ReadFile(fp, buff, sizeof(config), &read, nullptr);
+	if ( flg && read==sizeof(config) ) {
+		memcpy(&config, buff, read);
+		n_th_correction();
 	}
-	return 0;
+	CloseHandle(fp);
 }
-int
-func_config_set(void *data, int size)
+void
+save_config(std::string &path)
 {
-	if (size != sizeof(config)) {
-		return 0;
-	}
-	memcpy(&config, data, size);
-	n_th_correction();
-	return size;
+	HANDLE fp;
+	fp = CreateFileA(path.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+	if ( fp == INVALID_HANDLE_VALUE ) { return; }
+	WriteFile(fp, &config, sizeof(config), nullptr, nullptr);
+	CloseHandle(fp);
+}
+
+extern "C" {
+
+void
+UninitializePlugin() {
+	nn.reset(nullptr);
+}
+
+OUTPUT_PLUGIN_TABLE*
+GetOutputPluginTable(void)
+{
+	return &output_plugin_table;
+}
+
 }
