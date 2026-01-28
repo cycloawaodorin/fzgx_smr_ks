@@ -1,6 +1,6 @@
 CXX = g++
 WFLAGS = -Wall -Wextra -Wdeprecated-declarations -Wpointer-arith -Wwrite-strings -Wmissing-noreturn -Wno-unused-parameter -Wsuggest-attribute=format -Wsuggest-attribute=noreturn -Wunused-variable -Winit-self -Wshadow -Wlogical-op -Wconversion -Wold-style-cast
-CXXFLAGS = -c -O3 -std=c++23
+CXXFLAGS = -c -O3 -std=c++23 --input-charset=cp932
 INCLUDES = 
 LD = g++
 LDFLAGS = -shared -Wl,--dll,--enable-stdcall-fixup
