@@ -1,5 +1,6 @@
 CXX = g++
-CXXFLAGS = -Wall -Wextra -Wdeprecated-declarations -Wpointer-arith -Wwrite-strings -Wmissing-noreturn -Wno-unused-parameter -Wsuggest-attribute=format -Wsuggest-attribute=noreturn -Wunused-variable -Winit-self -Wshadow -Wlogical-op -Wconversion -Wold-style-cast -c -O3 -std=c++17
+WFLAGS = -Wall -Wextra -Wdeprecated-declarations -Wpointer-arith -Wwrite-strings -Wmissing-noreturn -Wno-unused-parameter -Wsuggest-attribute=format -Wsuggest-attribute=noreturn -Wunused-variable -Winit-self -Wshadow -Wlogical-op -Wconversion -Wold-style-cast
+CXXFLAGS = -c -O3 -std=c++23
 INCLUDES = 
 LD = g++
 LDFLAGS = -shared -Wl,--dll,--enable-stdcall-fixup
@@ -25,7 +26,7 @@ $(TARGET): $(OBJ) $(RES) $(DEF)
 	strip $(TARGET)
 
 $(OBJ): $(SRCS) $(HDRS) $(SUBSRCS)
-	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $(OBJ) $(SRC)
+	$(CXX) $(WFLAGS) $(CXXFLAGS) $(INCLUDES) -o $(OBJ) $(SRC)
 
 .rc.res:
 	windres --input-format=rc --output-format=coff -o $@ $<

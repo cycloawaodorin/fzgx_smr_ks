@@ -625,7 +625,7 @@ func_output(OUTPUT_INFO *oip_org)
 		} else {
 			wsprintf(str, "%s\n", est_str);
 		}
-		WriteFile(fp, str, strlen(str), &dw, NULL);
+		WriteFile(fp, str, static_cast<DWORD>(strlen(str)), &dw, NULL);
 	}
 	CloseHandle(fp);
 	return TRUE;
@@ -634,24 +634,24 @@ func_output(OUTPUT_INFO *oip_org)
 // コンフィグ関係
 static Separator sep_now=Separator::NONE;
 static void
-set_offset_enableness(HWND hdlg, BOOL val)
+set_offset_enableness(HWND hdlg, LRESULT val)
 {
-	EnableWindow(GetDlgItem(hdlg, IDC_OFFSET), val);
-	EnableWindow(GetDlgItem(hdlg, IDC_SPACE), val);
-	EnableWindow(GetDlgItem(hdlg, IDC_COMMA), val);
-	EnableWindow(GetDlgItem(hdlg, IDC_TAB), val);
+	EnableWindow(GetDlgItem(hdlg, IDC_OFFSET), static_cast<WINBOOL>(val));
+	EnableWindow(GetDlgItem(hdlg, IDC_SPACE), static_cast<WINBOOL>(val));
+	EnableWindow(GetDlgItem(hdlg, IDC_COMMA), static_cast<WINBOOL>(val));
+	EnableWindow(GetDlgItem(hdlg, IDC_TAB), static_cast<WINBOOL>(val));
 }
 static void
-set_dialog_enableness(HWND hdlg, BOOL val)
+set_dialog_enableness(HWND hdlg, LRESULT val)
 {
-	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL), val);
-	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL_LIM), val);
+	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL), static_cast<WINBOOL>(val));
+	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL_LIM), static_cast<WINBOOL>(val));
 }
 static void
-set_dialog_enableness_ex(HWND hdlg, BOOL val, BOOL val2)
+set_dialog_enableness_ex(HWND hdlg, LRESULT val, LRESULT val2)
 {
 	set_dialog_enableness(hdlg, val&&val2);
-	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_ALWAYS), val);
+	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_ALWAYS), static_cast<WINBOOL>(val));
 }
 static void
 init_dialog(HWND hdlg)
@@ -750,7 +750,8 @@ func_config_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 				SendDlgItemMessage(hdlg, IDC_DIALOG, BM_GETCHECK, 0, 0),
 				!SendDlgItemMessage(hdlg, IDC_DIALOG_ALWAYS, BM_GETCHECK, 0, 0));
 		} else if (lwparam == IDC_DIALOG_EVAL) {
-			EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL_LIM), SendDlgItemMessage(hdlg, IDC_DIALOG_EVAL, BM_GETCHECK, 0, 0));
+			EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL_LIM),
+				static_cast<WINBOOL>(SendDlgItemMessage(hdlg, IDC_DIALOG_EVAL, BM_GETCHECK, 0, 0)));
 		} else if (lwparam == IDC_DIALOG_ALWAYS) {
 			set_dialog_enableness(hdlg, !SendDlgItemMessage(hdlg, IDC_DIALOG_ALWAYS, BM_GETCHECK, 0, 0));
 		}
