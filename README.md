@@ -11,7 +11,7 @@ You do not need to build for using this plugin. If you want to build yourself, e
 The input video should be 720x480 and F-ZERO GX should be set for 16:9 monitors. If the video is for 4:3 monitors or resized to other than 720x480 resolution, you must resize (into 540x480 for 4:3 monitors' video) the input video before using this plugin. The brief instruction is written in the [Resizing section of USAGE.md](USAGE.md#resizing).
 
 ## Setting
-![aviutl](https://raw.githubusercontent.com/cycloawaodorin/fzgx_smr_ks/image/setting_raw.png)
+![aviutl](./image/setting_raw.png)
 ### ウィンドウ / Position of the window
 Specify the left-top coordinate of the window which covers the numbers of the speedometer. The default value will be appropriate. You can adjust the value in the preview dialog box if needed.
 
