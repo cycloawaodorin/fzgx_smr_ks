@@ -819,7 +819,8 @@ set_config_text()
 extern "C" {
 
 bool
-InitializePlugin(const DWORD version) {
+InitializePlugin(const DWORD version)
+{
 	TCHAR p_auo[PMAX+1];
 	GetModuleFileNameA(GetModuleHandleA(auo_filename), p_auo, PMAX);
 	std::string p_config = std::regex_replace(p_auo, std::regex(auo_filename), config_filename);
@@ -830,7 +831,8 @@ InitializePlugin(const DWORD version) {
 }
 
 void
-UninitializePlugin() {
+UninitializePlugin()
+{
 	nn.reset(nullptr);
 }
 
