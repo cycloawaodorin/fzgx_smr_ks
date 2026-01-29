@@ -401,7 +401,7 @@ check_video_size()
 			"動画は{}x{}以上のサイズが必要です(given: {}x{})．\n出力を中止します．",
 			window_width, height, oip->w, oip->h
 		);
-		MessageBox(GetActiveWindow(), str.c_str(), nullptr, MB_OK);
+		MessageBoxA(GetActiveWindow(), str.c_str(), nullptr, MB_OK);
 		return true;
 	}
 	correct_values();
@@ -710,16 +710,16 @@ setup_config(HWND &hdlg)
 	config.start_x = std::stoi(str);
 	GetDlgItemTextA(hdlg, IDC_Y, str.data(), static_cast<int>(str.size()));
 	config.start_y = std::stoi(str);
-	config.preview = SendDlgItemMessage(hdlg, IDC_PREVIEW, BM_GETCHECK, 0, 0);
-	config.frame = SendDlgItemMessage(hdlg, IDC_FRAME, BM_GETCHECK, 0, 0);
+	config.preview = SendDlgItemMessageA(hdlg, IDC_PREVIEW, BM_GETCHECK, 0, 0);
+	config.frame = SendDlgItemMessageA(hdlg, IDC_FRAME, BM_GETCHECK, 0, 0);
 	GetDlgItemTextA(hdlg, IDC_OFFSET, str.data(), static_cast<int>(str.size()));
 	config.offset = std::stoi(str);
 	config.sep_idx = sep_now;
-	config.dialog = SendDlgItemMessage(hdlg, IDC_DIALOG, BM_GETCHECK, 0, 0);
-	config.dialog_eval = SendDlgItemMessage(hdlg, IDC_DIALOG_EVAL, BM_GETCHECK, 0, 0);
+	config.dialog = SendDlgItemMessageA(hdlg, IDC_DIALOG, BM_GETCHECK, 0, 0);
+	config.dialog_eval = SendDlgItemMessageA(hdlg, IDC_DIALOG_EVAL, BM_GETCHECK, 0, 0);
 	GetDlgItemTextA(hdlg, IDC_DIALOG_EVAL_LIM, str.data(), static_cast<int>(str.size()));
 	config.dialog_eval_limit = std::stof(str);
-	config.dialog_always = SendDlgItemMessage(hdlg, IDC_DIALOG_ALWAYS, BM_GETCHECK, 0, 0);
+	config.dialog_always = SendDlgItemMessageA(hdlg, IDC_DIALOG_ALWAYS, BM_GETCHECK, 0, 0);
 	GetDlgItemTextA(hdlg, IDC_NTH, str.data(), static_cast<int>(str.size()));
 	config.num_th = std::stoi(str);
 	n_th_correction();
@@ -741,7 +741,7 @@ func_config_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 			setup_config(hdlg);
 			EndDialog(hdlg, LOWORD(wparam));
 		} else if (lwparam == IDC_FRAME) {
-			set_offset_enableness(hdlg, SendDlgItemMessage(hdlg, IDC_FRAME, BM_GETCHECK, 0, 0));
+			set_offset_enableness(hdlg, SendDlgItemMessageA(hdlg, IDC_FRAME, BM_GETCHECK, 0, 0));
 		} else if (lwparam == IDC_SPACE) {
 			sep_now = Separator::SPACE;
 		} else if (lwparam == IDC_COMMA) {
@@ -750,13 +750,13 @@ func_config_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 			sep_now = Separator::TAB;
 		} else if (lwparam == IDC_DIALOG) {
 			set_dialog_enableness_ex(hdlg,
-				SendDlgItemMessage(hdlg, IDC_DIALOG, BM_GETCHECK, 0, 0),
-				!SendDlgItemMessage(hdlg, IDC_DIALOG_ALWAYS, BM_GETCHECK, 0, 0));
+				SendDlgItemMessageA(hdlg, IDC_DIALOG, BM_GETCHECK, 0, 0),
+				!SendDlgItemMessageA(hdlg, IDC_DIALOG_ALWAYS, BM_GETCHECK, 0, 0));
 		} else if (lwparam == IDC_DIALOG_EVAL) {
 			EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL_LIM),
-				static_cast<BOOL>(SendDlgItemMessage(hdlg, IDC_DIALOG_EVAL, BM_GETCHECK, 0, 0)));
+				static_cast<BOOL>(SendDlgItemMessageA(hdlg, IDC_DIALOG_EVAL, BM_GETCHECK, 0, 0)));
 		} else if (lwparam == IDC_DIALOG_ALWAYS) {
-			set_dialog_enableness(hdlg, !SendDlgItemMessage(hdlg, IDC_DIALOG_ALWAYS, BM_GETCHECK, 0, 0));
+			set_dialog_enableness(hdlg, !SendDlgItemMessageA(hdlg, IDC_DIALOG_ALWAYS, BM_GETCHECK, 0, 0));
 		}
 		return TRUE;
 	}
