@@ -423,12 +423,12 @@ func_preview_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 	static unsigned char *bmp;
 	if (umsg == WM_INITDIALOG) {
 		std::string str = std::format("{}", config.start_x).c_str();
-		SetDlgItemText(hdlg, IDC_X, str.c_str());
+		SetDlgItemTextA(hdlg, IDC_X, str.c_str());
 		str = std::format("{}", config.start_y);
-		SetDlgItemText(hdlg, IDC_Y, str.c_str());
+		SetDlgItemTextA(hdlg, IDC_Y, str.c_str());
 		str = std::format("{}", preview_frame);
-		SetDlgItemText(hdlg, IDC_FRAME, str.c_str());
-		hBitmap = LoadBitmap(GetModuleHandle(auo_filename), "FFCK");
+		SetDlgItemTextA(hdlg, IDC_FRAME, str.c_str());
+		hBitmap = LoadBitmap(GetModuleHandleA(auo_filename), "FFCK");
 		BITMAPINFO bmi = {
 			{sizeof(BITMAPINFOHEADER), window_width, height, 1, 24, BI_RGB, 0, 0, 0, 0, 0},
 			{0, 0, 0, 0}
@@ -449,39 +449,39 @@ func_preview_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 		} else if (lwparam == IDOK) {
 			EndDialog(hdlg, LOWORD(wparam));
 		} else if (lwparam == IDC_X) {
-			GetDlgItemText(hdlg, IDC_X, str.data(), static_cast<int>(str.size()));
+			GetDlgItemTextA(hdlg, IDC_X, str.data(), static_cast<int>(str.size()));
 			config.start_x = std::stoi(str);
 			correct_values();
 		} else if (lwparam == IDC_XLEFT) {
 			config.start_x -= 1;
 			correct_values();
-			SetDlgItemText(hdlg, IDC_X, std::format("{}", config.start_x).c_str());
+			SetDlgItemTextA(hdlg, IDC_X, std::format("{}", config.start_x).c_str());
 		} else if (lwparam == IDC_XRIGHT) {
 			config.start_x += 1;
 			correct_values();
-			SetDlgItemText(hdlg, IDC_X, std::format("{}", config.start_x).c_str());
+			SetDlgItemTextA(hdlg, IDC_X, std::format("{}", config.start_x).c_str());
 		} else if (lwparam == IDC_Y) {
-			GetDlgItemText(hdlg, IDC_Y, str.data(), static_cast<int>(str.size()));
+			GetDlgItemTextA(hdlg, IDC_Y, str.data(), static_cast<int>(str.size()));
 			config.start_y = std::stoi(str);
 		} else if (lwparam == IDC_YLEFT) {
 			config.start_y -= 1;
 			correct_values();
-			SetDlgItemText(hdlg, IDC_Y, std::format("{}", config.start_y).c_str());
+			SetDlgItemTextA(hdlg, IDC_Y, std::format("{}", config.start_y).c_str());
 		} else if (lwparam == IDC_YRIGHT) {
 			config.start_y += 1;
 			correct_values();
-			SetDlgItemText(hdlg, IDC_Y, std::format("{}", config.start_y).c_str());
+			SetDlgItemTextA(hdlg, IDC_Y, std::format("{}", config.start_y).c_str());
 		} else if (lwparam == IDC_FRAME) {
-			GetDlgItemText(hdlg, IDC_FRAME, str.data(), static_cast<int>(str.size()));
+			GetDlgItemTextA(hdlg, IDC_FRAME, str.data(), static_cast<int>(str.size()));
 			preview_frame = std::stoi(str);
 		} else if (lwparam == IDC_FLEFT) {
 			preview_frame -= 1;
 			correct_values();
-			SetDlgItemText(hdlg, IDC_FRAME, std::format("{}", preview_frame).c_str());
+			SetDlgItemTextA(hdlg, IDC_FRAME, std::format("{}", preview_frame).c_str());
 		} else if (lwparam == IDC_FRIGHT) {
 			preview_frame += 1;
 			correct_values();
-			SetDlgItemText(hdlg, IDC_FRAME, std::format("{}", preview_frame).c_str());
+			SetDlgItemTextA(hdlg, IDC_FRAME, std::format("{}", preview_frame).c_str());
 		} else {
 			return FALSE;
 		}
@@ -548,7 +548,7 @@ func_correct_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 	static HBITMAP hBitmapD;
 	static unsigned char *bmp;
 	if (umsg == WM_INITDIALOG) {
-		SetDlgItemText(hdlg, IDC_EDIT, est_str);
+		SetDlgItemTextA(hdlg, IDC_EDIT, est_str);
 		BITMAPINFO bmi = {
 			{sizeof(BITMAPINFOHEADER), window_width, height, 1, 24, BI_RGB, 0, 0, 0, 0, 0},
 			{0, 0, 0, 0}
@@ -564,7 +564,7 @@ func_correct_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 			cancel = true;
 			EndDialog(hdlg, LOWORD(wparam));
 		} else if (lwparam == IDOK) {
-			GetDlgItemText(hdlg, IDC_EDIT, est_str, 5);
+			GetDlgItemTextA(hdlg, IDC_EDIT, est_str, 5);
 			est_str[4] = 0;
 			EndDialog(hdlg, LOWORD(wparam));
 		} else {
@@ -597,7 +597,7 @@ func_output(OUTPUT_INFO *oip_org)
 	
 	cancel = true;
 	if (config.preview) {
-		DialogBox(GetModuleHandle(auo_filename), "PREVIEW", GetActiveWindow(), reinterpret_cast<DLGPROC>(func_preview_proc));
+		DialogBoxA(GetModuleHandleA(auo_filename), "PREVIEW", GetActiveWindow(), reinterpret_cast<DLGPROC>(func_preview_proc));
 	}
 	if (cancel) {
 		return true;
@@ -614,7 +614,7 @@ func_output(OUTPUT_INFO *oip_org)
 		if (config.dialog) {
 			if ( config.dialog_always || dialog_flags.unmatch || dialog_flags.cnn_low ) {
 				preview_frame = i;
-				DialogBox(GetModuleHandle(auo_filename), "CORRECT", GetActiveWindow(), reinterpret_cast<DLGPROC>(func_correct_proc));
+				DialogBoxA(GetModuleHandleA(auo_filename), "CORRECT", GetActiveWindow(), reinterpret_cast<DLGPROC>(func_correct_proc));
 				if (cancel) {
 					CloseHandle(fp); return true;
 				}
@@ -657,13 +657,13 @@ static void
 init_dialog(HWND hdlg)
 {
 	std::string str = std::format("{}", config.start_x);
-	SetDlgItemText(hdlg, IDC_X, str.c_str());
+	SetDlgItemTextA(hdlg, IDC_X, str.c_str());
 	str = std::format("{}", config.start_y);
-	SetDlgItemText(hdlg, IDC_Y, str.c_str());
+	SetDlgItemTextA(hdlg, IDC_Y, str.c_str());
 	SendMessage(GetDlgItem(hdlg, IDC_PREVIEW), BM_SETCHECK, config.preview, 0);
 	SendMessage(GetDlgItem(hdlg, IDC_FRAME), BM_SETCHECK, config.frame, 0);
 	str = std::format("{}", config.offset);
-	SetDlgItemText(hdlg, IDC_OFFSET, str.c_str());
+	SetDlgItemTextA(hdlg, IDC_OFFSET, str.c_str());
 	set_offset_enableness(hdlg, config.frame);
 	sep_now = config.sep_idx;
 	if ( sep_now == Separator::SPACE ) {
@@ -679,12 +679,12 @@ init_dialog(HWND hdlg)
 	int delim_dec = static_cast<int>(std::round((config.dialog_eval_limit)*1000.0f));
 	int delim_int = delim_dec/1000;
 	str = std::format("{}.{:03}", delim_int, delim_dec-(delim_int*1000));
-	SetDlgItemText(hdlg, IDC_DIALOG_EVAL_LIM, str.c_str());
+	SetDlgItemTextA(hdlg, IDC_DIALOG_EVAL_LIM, str.c_str());
 	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL_LIM), config.dialog_eval);
 	SendMessage(GetDlgItem(hdlg, IDC_DIALOG_ALWAYS), BM_SETCHECK, config.dialog_always, 0);
 	set_dialog_enableness(hdlg, !config.dialog_always);
 	str = std::format("{}", config.num_th);
-	SetDlgItemText(hdlg, IDC_NTH, str.c_str());
+	SetDlgItemTextA(hdlg, IDC_NTH, str.c_str());
 }
 static void
 n_th_correction()
@@ -702,21 +702,21 @@ static void
 setup_config(HWND hdlg)
 {
 	std::string str(15, 0);
-	GetDlgItemText(hdlg, IDC_X, str.data(), static_cast<int>(str.size()));
+	GetDlgItemTextA(hdlg, IDC_X, str.data(), static_cast<int>(str.size()));
 	config.start_x = std::stoi(str);
-	GetDlgItemText(hdlg, IDC_Y, str.data(), static_cast<int>(str.size()));
+	GetDlgItemTextA(hdlg, IDC_Y, str.data(), static_cast<int>(str.size()));
 	config.start_y = std::stoi(str);
 	config.preview = SendDlgItemMessage(hdlg, IDC_PREVIEW, BM_GETCHECK, 0, 0);
 	config.frame = SendDlgItemMessage(hdlg, IDC_FRAME, BM_GETCHECK, 0, 0);
-	GetDlgItemText(hdlg, IDC_OFFSET, str.data(), static_cast<int>(str.size()));
+	GetDlgItemTextA(hdlg, IDC_OFFSET, str.data(), static_cast<int>(str.size()));
 	config.offset = std::stoi(str);
 	config.sep_idx = sep_now;
 	config.dialog = SendDlgItemMessage(hdlg, IDC_DIALOG, BM_GETCHECK, 0, 0);
 	config.dialog_eval = SendDlgItemMessage(hdlg, IDC_DIALOG_EVAL, BM_GETCHECK, 0, 0);
-	GetDlgItemText(hdlg, IDC_DIALOG_EVAL_LIM, str.data(), static_cast<int>(str.size()));
+	GetDlgItemTextA(hdlg, IDC_DIALOG_EVAL_LIM, str.data(), static_cast<int>(str.size()));
 	config.dialog_eval_limit = std::stof(str);
 	config.dialog_always = SendDlgItemMessage(hdlg, IDC_DIALOG_ALWAYS, BM_GETCHECK, 0, 0);
-	GetDlgItemText(hdlg, IDC_NTH, str.data(), static_cast<int>(str.size()));
+	GetDlgItemTextA(hdlg, IDC_NTH, str.data(), static_cast<int>(str.size()));
 	config.num_th = std::stoi(str);
 	n_th_correction();
 }
@@ -762,11 +762,11 @@ bool
 func_config(HWND hwnd, HINSTANCE dll_hinst)
 {
 	TCHAR p_auo[PMAX+1];
-	GetModuleFileNameA(GetModuleHandle(auo_filename), p_auo, PMAX);
+	GetModuleFileNameA(GetModuleHandleA(auo_filename), p_auo, PMAX);
 	std::string p_config = std::regex_replace(p_auo, std::regex(auo_filename), config_filename);
 	
 	load_config(p_config);
-	DialogBox(dll_hinst, "CONFIG", hwnd, reinterpret_cast<DLGPROC>(func_config_proc));
+	DialogBoxA(dll_hinst, "CONFIG", hwnd, reinterpret_cast<DLGPROC>(func_config_proc));
 	save_config(p_config);
 	set_config_text();
 	
@@ -817,7 +817,7 @@ extern "C" {
 bool
 InitializePlugin(DWORD version) {
 	TCHAR p_auo[PMAX+1];
-	GetModuleFileNameA(GetModuleHandle(auo_filename), p_auo, PMAX);
+	GetModuleFileNameA(GetModuleHandleA(auo_filename), p_auo, PMAX);
 	std::string p_config = std::regex_replace(p_auo, std::regex(auo_filename), config_filename);
 	
 	load_config(p_config);
