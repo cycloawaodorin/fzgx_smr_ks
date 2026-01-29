@@ -10,8 +10,8 @@
 
 bool func_output( OUTPUT_INFO *oip );
 bool func_config( HWND hwnd, HINSTANCE hinst );
-void load_config(std::string &path);
-void save_config(std::string &path);
+void load_config(const std::string &path);
+void save_config(const std::string &path);
 LPCWSTR func_get_config_text();
 static std::wstring config_text;
 void set_config_text();
@@ -48,8 +48,8 @@ static struct {
 	int num_th;
 } config = {536, 413, true, true, 0, Separator::SPACE, true, true, 0.95f, false, 0};
 
-static const TCHAR *auo_filename = "fzgx_smr_ks.auo2";
-static const TCHAR *config_filename = "fzgx_smr_ks.config";
+constexpr static const TCHAR *auo_filename = "fzgx_smr_ks.auo2";
+constexpr static const TCHAR *config_filename = "fzgx_smr_ks.config";
 #define PLUGIN_NAME L"SMR for F-ZERO GX"
 OUTPUT_PLUGIN_TABLE output_plugin_table = {
 	0,
@@ -66,8 +66,8 @@ constexpr static const int height = 26;
 constexpr static const int window_width = 19*4;
 constexpr static const int window_byte_width = 19*4*3;
 static int dib_width;
-static const char *separators = " ,\t";
-static const char *digits = "0123456789 ";
+constexpr static const char *separators = " ,\t";
+constexpr static const char *digits = "0123456789 ";
 static bool cancel;
 static OUTPUT_INFO *oip=nullptr;
 static int preview_frame=0;
@@ -80,7 +80,7 @@ constexpr static const DWORD PMAX = 1023;
 
 template <class T>
 static void
-parallel_do(void (*f)(T*, std::size_t, std::size_t), T *p, std::size_t n)
+parallel_do(void (*f)(T*, const std::size_t&, const std::size_t&), T *p, const std::size_t &n)
 {
 	std::unique_ptr<std::thread[]> threads(new std::thread[n]);
 	for (std::size_t i=0; i<n; i++) {
@@ -354,7 +354,7 @@ public:
 	Cnn cnn[4];
 	Dnn dnn[4];
 	static void
-	invoke(Nets *p, std::size_t i, std::size_t n)
+	invoke(Nets *p, const std::size_t &i, const std::size_t &n)
 	{
 		const std::size_t start = (i*8)/n;
 		const std::size_t end = ((i+1)*8)/n;
@@ -407,7 +407,7 @@ check_video_size()
 	return false;
 }
 static void
-set_bmp(unsigned char *bmp, int frame)
+set_bmp(unsigned char *bmp, const int &frame)
 {
 	const unsigned char *org = static_cast<unsigned char *>(oip->func_get_video(frame, YC48));
 	correct_values();
@@ -634,7 +634,7 @@ func_output(OUTPUT_INFO *oip_org)
 // コンフィグ関係
 static Separator sep_now=Separator::NONE;
 static void
-set_offset_enableness(HWND hdlg, LRESULT val)
+set_offset_enableness(HWND &hdlg, const LRESULT &val)
 {
 	EnableWindow(GetDlgItem(hdlg, IDC_OFFSET), static_cast<BOOL>(val));
 	EnableWindow(GetDlgItem(hdlg, IDC_SPACE), static_cast<BOOL>(val));
@@ -642,19 +642,19 @@ set_offset_enableness(HWND hdlg, LRESULT val)
 	EnableWindow(GetDlgItem(hdlg, IDC_TAB), static_cast<BOOL>(val));
 }
 static void
-set_dialog_enableness(HWND hdlg, LRESULT val)
+set_dialog_enableness(HWND &hdlg, const LRESULT &val)
 {
 	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL), static_cast<BOOL>(val));
 	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL_LIM), static_cast<BOOL>(val));
 }
 static void
-set_dialog_enableness_ex(HWND hdlg, LRESULT val, LRESULT val2)
+set_dialog_enableness_ex(HWND &hdlg, LRESULT val, const LRESULT &val2)
 {
 	set_dialog_enableness(hdlg, val&&val2);
 	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_ALWAYS), static_cast<BOOL>(val));
 }
 static void
-init_dialog(HWND hdlg)
+init_dialog(HWND &hdlg)
 {
 	std::string str = std::format("{}", config.start_x);
 	SetDlgItemTextA(hdlg, IDC_X, str.c_str());
@@ -699,7 +699,7 @@ n_th_correction()
 	n_th = static_cast<std::size_t>(nt);
 }
 static void
-setup_config(HWND hdlg)
+setup_config(HWND &hdlg)
 {
 	std::string str(15, 0);
 	GetDlgItemTextA(hdlg, IDC_X, str.data(), static_cast<int>(str.size()));
@@ -774,7 +774,7 @@ func_config(HWND hwnd, HINSTANCE dll_hinst)
 }
 
 void
-load_config(std::string &path)
+load_config(const std::string &path)
 {
 	HANDLE fp;
 	fp = CreateFileA(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -789,7 +789,7 @@ load_config(std::string &path)
 	CloseHandle(fp);
 }
 void
-save_config(std::string &path)
+save_config(const std::string &path)
 {
 	HANDLE fp;
 	fp = CreateFileA(path.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -815,7 +815,7 @@ set_config_text()
 extern "C" {
 
 bool
-InitializePlugin(DWORD version) {
+InitializePlugin(const DWORD version) {
 	TCHAR p_auo[PMAX+1];
 	GetModuleFileNameA(GetModuleHandleA(auo_filename), p_auo, PMAX);
 	std::string p_config = std::regex_replace(p_auo, std::regex(auo_filename), config_filename);
@@ -831,7 +831,7 @@ UninitializePlugin() {
 }
 
 OUTPUT_PLUGIN_TABLE*
-GetOutputPluginTable(void)
+GetOutputPluginTable()
 {
 	return &output_plugin_table;
 }
