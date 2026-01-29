@@ -18,7 +18,9 @@ void set_config_text();
 
 constexpr static const DWORD YC48 = mmioFOURCC('Y', 'C', '4', '8');
 
-std::string lw2str(const LPCWSTR lpcwstr) {
+static std::string
+lw2str(const LPCWSTR lpcwstr)
+{
 	if (!lpcwstr) return {};
 	int size_needed = WideCharToMultiByte(932, 0, lpcwstr, -1, nullptr, 0, nullptr, nullptr);
 	if (size_needed <= 0) return {};
@@ -359,7 +361,7 @@ public:
 		const std::size_t start = (i*8)/n;
 		const std::size_t end = ((i+1)*8)/n;
 		for (std::size_t j=start; j<end; j++) {
-			std::size_t j_=j%4;
+			const std::size_t j_=j%4;
 			const unsigned char *s = p->src + (j_*width*3);
 			if (j<4) {
 				p->cnn[j_].predict(s);
@@ -443,7 +445,7 @@ func_preview_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 	} else if (umsg==WM_COMMAND) {
 		std::string str(15, 0);
 		WORD lwparam = LOWORD(wparam);
-		if (lwparam == IDCANCEL ) {
+		if (lwparam == IDCANCEL) {
 			cancel = true;
 			EndDialog(hdlg, LOWORD(wparam));
 		} else if (lwparam == IDOK) {
@@ -636,19 +638,21 @@ static Separator sep_now=Separator::NONE;
 static void
 set_offset_enableness(HWND &hdlg, const LRESULT &val)
 {
-	EnableWindow(GetDlgItem(hdlg, IDC_OFFSET), static_cast<BOOL>(val));
-	EnableWindow(GetDlgItem(hdlg, IDC_SPACE), static_cast<BOOL>(val));
-	EnableWindow(GetDlgItem(hdlg, IDC_COMMA), static_cast<BOOL>(val));
-	EnableWindow(GetDlgItem(hdlg, IDC_TAB), static_cast<BOOL>(val));
+	BOOL v = static_cast<BOOL>(val);
+	EnableWindow(GetDlgItem(hdlg, IDC_OFFSET), v);
+	EnableWindow(GetDlgItem(hdlg, IDC_SPACE), v);
+	EnableWindow(GetDlgItem(hdlg, IDC_COMMA), v);
+	EnableWindow(GetDlgItem(hdlg, IDC_TAB), v);
 }
 static void
 set_dialog_enableness(HWND &hdlg, const LRESULT &val)
 {
-	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL), static_cast<BOOL>(val));
-	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL_LIM), static_cast<BOOL>(val));
+	BOOL v = static_cast<BOOL>(val);
+	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL), v);
+	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL_LIM), v);
 }
 static void
-set_dialog_enableness_ex(HWND &hdlg, LRESULT val, const LRESULT &val2)
+set_dialog_enableness_ex(HWND &hdlg, const LRESULT &val, const LRESULT &val2)
 {
 	set_dialog_enableness(hdlg, val&&val2);
 	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_ALWAYS), static_cast<BOOL>(val));
@@ -708,7 +712,7 @@ setup_config(HWND &hdlg)
 	config.start_y = std::stoi(str);
 	config.preview = SendDlgItemMessage(hdlg, IDC_PREVIEW, BM_GETCHECK, 0, 0);
 	config.frame = SendDlgItemMessage(hdlg, IDC_FRAME, BM_GETCHECK, 0, 0);
-	GetDlgItemTextA(hdlg, IDC_OFFSET, str.data(), static_cast<int>(str.size()));
+	GetDlgItemTextA(hdlg, IDC_OFFSET, str.data(), static_cast<int>(str.size()-1));
 	config.offset = std::stoi(str);
 	config.sep_idx = sep_now;
 	config.dialog = SendDlgItemMessage(hdlg, IDC_DIALOG, BM_GETCHECK, 0, 0);
