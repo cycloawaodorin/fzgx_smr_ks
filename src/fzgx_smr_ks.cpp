@@ -54,7 +54,7 @@ constexpr static const TCHAR *auo_filename = "fzgx_smr_ks.auo2";
 constexpr static const TCHAR *config_filename = "fzgx_smr_ks.config";
 #define PLUGIN_NAME L"SMR for F-ZERO GX"
 OUTPUT_PLUGIN_TABLE output_plugin_table = {
-	0,
+	OUTPUT_PLUGIN_TABLE::FLAG_VIDEO,
 	PLUGIN_NAME,
 	L"Text File (*.txt)\0*.txt\0CSV File (*.csv)\0*.csv\0All File (*.*)\0*.*\0",
 	(PLUGIN_NAME L" " VERSION L" by KAZOON"),
@@ -712,7 +712,7 @@ setup_config(HWND &hdlg)
 	config.start_y = std::stoi(str);
 	config.preview = SendDlgItemMessage(hdlg, IDC_PREVIEW, BM_GETCHECK, 0, 0);
 	config.frame = SendDlgItemMessage(hdlg, IDC_FRAME, BM_GETCHECK, 0, 0);
-	GetDlgItemTextA(hdlg, IDC_OFFSET, str.data(), static_cast<int>(str.size()-1));
+	GetDlgItemTextA(hdlg, IDC_OFFSET, str.data(), static_cast<int>(str.size()));
 	config.offset = std::stoi(str);
 	config.sep_idx = sep_now;
 	config.dialog = SendDlgItemMessage(hdlg, IDC_DIALOG, BM_GETCHECK, 0, 0);
