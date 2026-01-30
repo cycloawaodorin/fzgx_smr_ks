@@ -78,7 +78,6 @@ static struct {
 } dialog_flags;
 static char est_str[5]={0, 0, 0, 0, 0};
 static std::size_t n_th=std::thread::hardware_concurrency();
-constexpr static const DWORD PMAX = 1023;
 
 template <class T>
 static void
@@ -765,8 +764,8 @@ func_config_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 bool
 func_config(HWND hwnd, HINSTANCE dll_hinst)
 {
-	TCHAR p_auo[PMAX+1];
-	GetModuleFileNameA(GetModuleHandleA(auo_filename), p_auo, PMAX);
+	TCHAR p_auo[MAX_PATH];
+	GetModuleFileNameA(GetModuleHandleA(auo_filename), p_auo, MAX_PATH-1);
 	std::string p_config = std::regex_replace(p_auo, std::regex(auo_filename), config_filename);
 	
 	load_config(p_config);
@@ -821,8 +820,8 @@ extern "C" {
 bool
 InitializePlugin(const DWORD version)
 {
-	TCHAR p_auo[PMAX+1];
-	GetModuleFileNameA(GetModuleHandleA(auo_filename), p_auo, PMAX);
+	TCHAR p_auo[MAX_PATH];
+	GetModuleFileNameA(GetModuleHandleA(auo_filename), p_auo, MAX_PATH-1);
 	std::string p_config = std::regex_replace(p_auo, std::regex(auo_filename), config_filename);
 	
 	load_config(p_config);
