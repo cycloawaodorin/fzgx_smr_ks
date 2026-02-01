@@ -1,12 +1,13 @@
-#include <windows.h>
+ï»¿#include <windows.h>
 #include <cmath>
 #include <iterator>
 #include <memory>
 #include <thread>
+#include <string>
 #include <format>
-#include "output.h"
+#include "output.hpp"
 #include "resource_definition.h"
-#include "version.h"
+#include "version.hpp"
 
 enum class Separator {
 	SPACE=0,
@@ -28,27 +29,51 @@ static struct {
 	int num_th;
 } config = {536, 413, true, true, 0, Separator::SPACE, true, true, 0.95f, false, 0};
 
-static const TCHAR *auo_filename = "fzgx_smr_ks.auo";
-#define PLUGIN_NAME "SMR for F-ZERO GX"
-static const char *filefilter = "Text File (*.txt)\0*.txt\0CSV File (*.csv)\0*.csv\0All File (*.*)\0*.*\0";
-OUTPUT_PLUGIN_TABLE output_plugin_table = {
-	0,
-	const_cast<TCHAR *>(PLUGIN_NAME),
-	const_cast<TCHAR *>(filefilter),
-	const_cast<TCHAR *>(PLUGIN_NAME " " VERSION " by KAZOON"),
-	nullptr,
-	func_exit,
-	func_output,
-	func_config,
-	func_config_get,
-	func_config_set,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-};
-
-EXTERN_C OUTPUT_PLUGIN_TABLE __declspec(dllexport) * __stdcall
-GetOutputPluginTable(void)
+static std::wstring
+Utf8ToUtf16(const std::string &utf8)
 {
-	return &output_plugin_table;
+	if (utf8.empty()) return L"";
+	int size = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, nullptr, 0);
+	std::wstring wstr(size - 1, L'\0');
+	MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, wstr.data(), size);
+	return wstr;
+}
+static std::string
+Utf16ToCp932(const std::wstring &utf16)
+{
+	if (utf16.empty()) return "";
+	int size = WideCharToMultiByte(932, 0, utf16.c_str(), -1, nullptr, 0, nullptr, nullptr);
+	std::string str(size - 1, '\0');
+	WideCharToMultiByte(932, 0, utf16.c_str(), -1, str.data(), size, nullptr, nullptr);
+	return str;
+}
+static std::string
+Utf8ToCp932(const std::string &utf8)
+{
+	return Utf16ToCp932(Utf8ToUtf16(utf8));
+}
+
+static const std::wstring auo_filename = L"fzgx_smr_ks.auo";
+#define PLUGIN_NAME "SMR for F-ZERO GX"
+
+EXTERN_C OUTPUT_PLUGIN_TABLE *
+GetOutputPluginTable()
+{
+	static CHAR filefilter[] = "Text File (*.txt)\0*.txt\0CSV File (*.csv)\0*.csv\0All File (*.*)\0*.*\0";
+	static OUTPUT_PLUGIN_TABLE opt = {
+		0,
+		const_cast<LPSTR>(Utf8ToCp932(PLUGIN_NAME).c_str()),
+		filefilter,
+		const_cast<LPSTR>(Utf8ToCp932(PLUGIN_NAME " " VERSION " by KAZOON").c_str()),
+		nullptr,
+		func_exit,
+		func_output,
+		func_config,
+		func_config_get,
+		func_config_set,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	};
+	return &opt;
 }
 
 constexpr static const int width = 19;
@@ -83,7 +108,7 @@ parallel_do(void (*f)(T*, const std::size_t&, const std::size_t&), T *p, const s
 class Cnn {
 private:
 #include "weights0.cpp"
-	void
+	constexpr void
 	conv0(const unsigned char *src)
 	{
 		for (std::size_t i=0; i<std::size(inter0); i++) {
@@ -104,7 +129,7 @@ private:
 			}
 		}
 	}
-	void
+	constexpr void
 	conv1()
 	{
 		for (std::size_t i=0; i<std::size(inter1); i++) {
@@ -122,7 +147,7 @@ private:
 			}
 		}
 	}
-	void
+	constexpr void
 	pooling()
 	{
 		for (std::size_t i=0; i<std::size(inter2); i++) {
@@ -140,7 +165,7 @@ private:
 			}
 		}
 	}
-	void
+	constexpr void
 	conv2()
 	{
 		for (std::size_t i=0; i<std::size(inter3); i++) {
@@ -161,7 +186,7 @@ private:
 			}
 		}
 	}
-	void
+	constexpr void
 	dense0()
 	{
 		for (std::size_t i=0; i<std::size(Dense0B); i++) {
@@ -179,7 +204,7 @@ private:
 			}
 		}
 	}
-	void
+	constexpr void
 	dense1()
 	{
 		float sum = 0.0f;
@@ -211,7 +236,7 @@ public:
 class Dnn {
 private:
 #include "weights1.cpp"
-	void
+	constexpr void
 	conv0(const unsigned char *src)
 	{
 		for (std::size_t i=0; i<std::size(inter0); i++) {
@@ -232,7 +257,7 @@ private:
 			}
 		}
 	}
-	void
+	constexpr void
 	conv1()
 	{
 		for (std::size_t i=0; i<std::size(inter1); i++) {
@@ -250,7 +275,7 @@ private:
 			}
 		}
 	}
-	void
+	constexpr void
 	pooling()
 	{
 		for (std::size_t i=0; i<std::size(inter2); i++) {
@@ -268,7 +293,7 @@ private:
 			}
 		}
 	}
-	void
+	constexpr void
 	conv2()
 	{
 		for (std::size_t i=0; i<std::size(inter3); i++) {
@@ -289,7 +314,7 @@ private:
 			}
 		}
 	}
-	void
+	constexpr void
 	dense0()
 	{
 		for (std::size_t i=0; i<std::size(Dense0B); i++) {
@@ -307,7 +332,7 @@ private:
 			}
 		}
 	}
-	void
+	constexpr void
 	dense1()
 	{
 		float sum = 0.0f;
@@ -348,7 +373,7 @@ public:
 		const std::size_t start = (i*8)/n;
 		const std::size_t end = ((i+1)*8)/n;
 		for (std::size_t j=start; j<end; j++) {
-			std::size_t j_=j%4;
+			const std::size_t j_=j%4;
 			const unsigned char *s = p->src + (j_*width*3);
 			if (j<4) {
 				p->cnn[j_].predict(s);
@@ -360,7 +385,7 @@ public:
 };
 static std::unique_ptr<Nets> nn(new Nets());
 
-static void
+constexpr static void
 correct_values()
 {
 	if ( config.start_x < 0 ) {
@@ -379,16 +404,16 @@ correct_values()
 		preview_frame = oip->n-1;
 	}
 }
-// ƒTƒCƒY‚É‡‚í‚¹‚Ä‚¢‚ë‚¢‚ëC³Do—Í•s‰Â‚È‚ç TRUE ‚ð•Ô‚·D
+// ã‚µã‚¤ã‚ºã«åˆã‚ã›ã¦ã„ã‚ã„ã‚ä¿®æ­£ï¼Žå‡ºåŠ›ä¸å¯ãªã‚‰ TRUE ã‚’è¿”ã™ï¼Ž
 static bool
 check_video_size()
 {
 	if (oip->w < window_width || oip->h < height) {
 		std::string str = std::format(
-			"“®‰æ‚Í{}x{}ˆÈã‚ÌƒTƒCƒY‚ª•K—v‚Å‚·(given: {}x{})D\no—Í‚ð’†Ž~‚µ‚Ü‚·D",
+			"å‹•ç”»ã¯{}x{}ä»¥ä¸Šã®ã‚µã‚¤ã‚ºãŒå¿…è¦ã§ã™(given: {}x{})ï¼Ž\nå‡ºåŠ›ã‚’ä¸­æ­¢ã—ã¾ã™ï¼Ž",
 			window_width, height, oip->w, oip->h
 		);
-		MessageBoxA(GetActiveWindow(), str.c_str(), nullptr, MB_OK);
+		MessageBoxW(GetActiveWindow(), Utf8ToUtf16(str).c_str(), nullptr, MB_OK);
 		return true;
 	}
 	correct_values();
@@ -412,12 +437,12 @@ func_preview_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 	static unsigned char *bmp;
 	if (umsg == WM_INITDIALOG) {
 		std::string str = std::format("{}", config.start_x).c_str();
-		SetDlgItemTextA(hdlg, IDC_X, str.c_str());
+		SetDlgItemTextW(hdlg, IDC_X, Utf8ToUtf16(str).c_str());
 		str = std::format("{}", config.start_y);
-		SetDlgItemTextA(hdlg, IDC_Y, str.c_str());
+		SetDlgItemTextW(hdlg, IDC_Y, Utf8ToUtf16(str).c_str());
 		str = std::format("{}", preview_frame);
-		SetDlgItemTextA(hdlg, IDC_FRAME, str.c_str());
-		hBitmap = LoadBitmap(GetModuleHandleA(auo_filename), "FFCK");
+		SetDlgItemTextW(hdlg, IDC_FRAME, Utf8ToUtf16(str).c_str());
+		hBitmap = LoadBitmap(GetModuleHandleW(auo_filename.c_str()), "FFCK");
 		BITMAPINFO bmi = {
 			{sizeof(BITMAPINFOHEADER), window_width, height, 1, 24, BI_RGB, 0, 0, 0, 0, 0},
 			{0, 0, 0, 0}
@@ -430,7 +455,7 @@ func_preview_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 		DeleteObject(hBitmapD);
 		return TRUE;
 	} else if (umsg==WM_COMMAND) {
-		std::string str(15, 0);
+		std::wstring wstr(15, 0);
 		WORD lwparam = LOWORD(wparam);
 		if (lwparam == IDCANCEL ) {
 			cancel = true;
@@ -438,40 +463,40 @@ func_preview_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 		} else if (lwparam == IDOK) {
 			EndDialog(hdlg, LOWORD(wparam));
 		} else if (lwparam == IDC_X) {
-			GetDlgItemTextA(hdlg, IDC_X, str.data(), static_cast<int>(str.size()));
-			config.start_x = std::stoi(str);
+			GetDlgItemTextW(hdlg, IDC_X, wstr.data(), static_cast<int>(wstr.size()));
+			config.start_x = std::stoi(wstr);
 			correct_values();
 		} else if (lwparam == IDC_XLEFT) {
 			config.start_x -= 1;
 			correct_values();
-			SetDlgItemTextA(hdlg, IDC_X, std::format("{}", config.start_x).c_str());
+			SetDlgItemTextW(hdlg, IDC_X, std::format(L"{}", config.start_x).c_str());
 		} else if (lwparam == IDC_XRIGHT) {
 			config.start_x += 1;
 			correct_values();
-			SetDlgItemTextA(hdlg, IDC_X, std::format("{}", config.start_x).c_str());
+			SetDlgItemTextW(hdlg, IDC_X, std::format(L"{}", config.start_x).c_str());
 		} else if (lwparam == IDC_Y) {
-			GetDlgItemTextA(hdlg, IDC_Y, str.data(), static_cast<int>(str.size()));
-			config.start_y = std::stoi(str);
+			GetDlgItemTextW(hdlg, IDC_Y, wstr.data(), static_cast<int>(wstr.size()));
+			config.start_y = std::stoi(wstr);
 		} else if (lwparam == IDC_YLEFT) {
 			config.start_y -= 1;
 			correct_values();
-			SetDlgItemTextA(hdlg, IDC_Y, std::format("{}", config.start_y).c_str());
+			SetDlgItemTextW(hdlg, IDC_Y, std::format(L"{}", config.start_y).c_str());
 		} else if (lwparam == IDC_YRIGHT) {
 			config.start_y += 1;
 			correct_values();
 			correct_values();
-			SetDlgItemTextA(hdlg, IDC_Y, std::format("{}", config.start_y).c_str());
+			SetDlgItemTextW(hdlg, IDC_Y, std::format(L"{}", config.start_y).c_str());
 		} else if (lwparam == IDC_FRAME) {
-			GetDlgItemTextA(hdlg, IDC_FRAME, str.data(), static_cast<int>(str.size()));
-			preview_frame = std::stoi(str);
+			GetDlgItemTextW(hdlg, IDC_FRAME, wstr.data(), static_cast<int>(wstr.size()));
+			preview_frame = std::stoi(wstr);
 		} else if (lwparam == IDC_FLEFT) {
 			preview_frame -= 1;
 			correct_values();
-			SetDlgItemTextA(hdlg, IDC_FRAME, std::format("{}", preview_frame).c_str());
+			SetDlgItemTextW(hdlg, IDC_FRAME, std::format(L"{}", preview_frame).c_str());
 		} else if (lwparam == IDC_FRIGHT) {
 			preview_frame += 1;
 			correct_values();
-			SetDlgItemTextA(hdlg, IDC_FRAME, std::format("{}", preview_frame).c_str());
+			SetDlgItemTextW(hdlg, IDC_FRAME, std::format(L"{}", preview_frame).c_str());
 		} else {
 			return FALSE;
 		}
@@ -594,7 +619,7 @@ func_output(OUTPUT_INFO *oip_org)
 	
 	cancel = FALSE;
 	if (config.preview) {
-		DialogBoxA(GetModuleHandle(auo_filename), "PREVIEW", GetActiveWindow(), reinterpret_cast<DLGPROC>(func_preview_proc));
+		DialogBoxW(GetModuleHandleW(auo_filename.c_str()), L"PREVIEW", GetActiveWindow(), reinterpret_cast<DLGPROC>(func_preview_proc));
 	}
 	if (cancel) {
 		return TRUE;
@@ -611,7 +636,7 @@ func_output(OUTPUT_INFO *oip_org)
 		if (config.dialog) {
 			if ( config.dialog_always || dialog_flags.unmatch || dialog_flags.cnn_low ) {
 				preview_frame = i;
-				DialogBoxA(GetModuleHandle(auo_filename), "CORRECT", GetActiveWindow(), reinterpret_cast<DLGPROC>(func_correct_proc));
+				DialogBoxW(GetModuleHandleW(auo_filename.c_str()), L"CORRECT", GetActiveWindow(), reinterpret_cast<DLGPROC>(func_correct_proc));
 				if (cancel) {
 					CloseHandle(fp); return TRUE;
 				}
@@ -628,9 +653,9 @@ func_output(OUTPUT_INFO *oip_org)
 	return TRUE;
 }
 
-// ƒRƒ“ƒtƒBƒOŠÖŒW
+// ã‚³ãƒ³ãƒ•ã‚£ã‚°é–¢ä¿‚
 static Separator sep_now=Separator::NONE;
-static void
+constexpr static void
 set_offset_enableness(HWND hdlg, const BOOL &val)
 {
 	EnableWindow(GetDlgItem(hdlg, IDC_OFFSET), val);
@@ -638,13 +663,13 @@ set_offset_enableness(HWND hdlg, const BOOL &val)
 	EnableWindow(GetDlgItem(hdlg, IDC_COMMA), val);
 	EnableWindow(GetDlgItem(hdlg, IDC_TAB), val);
 }
-static void
+constexpr static void
 set_dialog_enableness(HWND hdlg, const BOOL &val)
 {
 	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL), val);
 	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL_LIM), val);
 }
-static void
+constexpr static void
 set_dialog_enableness_ex(HWND hdlg, const BOOL &val, const BOOL &val2)
 {
 	set_dialog_enableness(hdlg, val&&val2);
@@ -653,14 +678,14 @@ set_dialog_enableness_ex(HWND hdlg, const BOOL &val, const BOOL &val2)
 static void
 init_dialog(HWND &hdlg)
 {
-	std::string str = std::format("{}", config.start_x);
-	SetDlgItemTextA(hdlg, IDC_X, str.c_str());
-	str = std::format("{}", config.start_y);
-	SetDlgItemTextA(hdlg, IDC_Y, str.c_str());
+	std::wstring wstr = std::format(L"{}", config.start_x);
+	SetDlgItemTextW(hdlg, IDC_X, wstr.c_str());
+	wstr = std::format(L"{}", config.start_y);
+	SetDlgItemTextW(hdlg, IDC_Y, wstr.c_str());
 	SendMessage(GetDlgItem(hdlg, IDC_PREVIEW), BM_SETCHECK, config.preview, 0);
 	SendMessage(GetDlgItem(hdlg, IDC_FRAME), BM_SETCHECK, config.frame, 0);
-	str = std::format("{}", config.offset);
-	SetDlgItemTextA(hdlg, IDC_OFFSET, str.c_str());
+	wstr = std::format(L"{}", config.offset);
+	SetDlgItemTextW(hdlg, IDC_OFFSET, wstr.c_str());
 	set_offset_enableness(hdlg, config.frame);
 	sep_now = config.sep_idx;
 	if ( sep_now == Separator::SPACE ) {
@@ -675,15 +700,15 @@ init_dialog(HWND &hdlg)
 	SendMessage(GetDlgItem(hdlg, IDC_DIALOG_EVAL), BM_SETCHECK, config.dialog_eval, 0);
 	int delim_dec = static_cast<int>(std::round((config.dialog_eval_limit)*1000.0f));
 	int delim_int = delim_dec/1000;
-	str = std::format("{}.{:03}", delim_int, delim_dec-(delim_int*1000));
-	SetDlgItemTextA(hdlg, IDC_DIALOG_EVAL_LIM, str.c_str());
+	wstr = std::format(L"{}.{:03}", delim_int, delim_dec-(delim_int*1000));
+	SetDlgItemTextW(hdlg, IDC_DIALOG_EVAL_LIM, wstr.c_str());
 	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL_LIM), config.dialog_eval);
 	SendMessage(GetDlgItem(hdlg, IDC_DIALOG_ALWAYS), BM_SETCHECK, config.dialog_always, 0);
 	set_dialog_enableness(hdlg, !config.dialog_always);
-	str = std::format("{}", config.num_th);
-	SetDlgItemTextA(hdlg, IDC_NTH, str.c_str());
+	wstr = std::format(L"{}", config.num_th);
+	SetDlgItemTextW(hdlg, IDC_NTH, wstr.c_str());
 }
-static void
+constexpr static void
 n_th_correction()
 {
 	int nt = config.num_th;
@@ -698,23 +723,23 @@ n_th_correction()
 static void
 setup_config(HWND hdlg)
 {
-	std::string str(15, 0);
-	GetDlgItemTextA(hdlg, IDC_X, str.data(), static_cast<int>(str.size()));
-	config.start_x = std::stoi(str);
-	GetDlgItemTextA(hdlg, IDC_Y, str.data(), static_cast<int>(str.size()));
-	config.start_y = std::stoi(str);
-	config.preview = SendDlgItemMessageA(hdlg, IDC_PREVIEW, BM_GETCHECK, 0, 0);
-	config.frame = SendDlgItemMessageA(hdlg, IDC_FRAME, BM_GETCHECK, 0, 0);
-	GetDlgItemTextA(hdlg, IDC_OFFSET, str.data(), static_cast<int>(str.size()));
-	config.offset = std::stoi(str);
+	std::wstring wstr(15, 0);
+	GetDlgItemTextW(hdlg, IDC_X, wstr.data(), static_cast<int>(wstr.size()));
+	config.start_x = std::stoi(wstr);
+	GetDlgItemTextW(hdlg, IDC_Y, wstr.data(), static_cast<int>(wstr.size()));
+	config.start_y = std::stoi(wstr);
+	config.preview = SendDlgItemMessageW(hdlg, IDC_PREVIEW, BM_GETCHECK, 0, 0);
+	config.frame = SendDlgItemMessageW(hdlg, IDC_FRAME, BM_GETCHECK, 0, 0);
+	GetDlgItemTextW(hdlg, IDC_OFFSET, wstr.data(), static_cast<int>(wstr.size()));
+	config.offset = std::stoi(wstr);
 	config.sep_idx = sep_now;
-	config.dialog = SendDlgItemMessageA(hdlg, IDC_DIALOG, BM_GETCHECK, 0, 0);
-	config.dialog_eval = SendDlgItemMessageA(hdlg, IDC_DIALOG_EVAL, BM_GETCHECK, 0, 0);
-	GetDlgItemTextA(hdlg, IDC_DIALOG_EVAL_LIM, str.data(), static_cast<int>(str.size()));
-	config.dialog_eval_limit = std::stof(str);
-	config.dialog_always = SendDlgItemMessageA(hdlg, IDC_DIALOG_ALWAYS, BM_GETCHECK, 0, 0);
-	GetDlgItemTextA(hdlg, IDC_NTH, str.data(), static_cast<int>(str.size()));
-	config.num_th = std::stoi(str);
+	config.dialog = SendDlgItemMessageW(hdlg, IDC_DIALOG, BM_GETCHECK, 0, 0);
+	config.dialog_eval = SendDlgItemMessageW(hdlg, IDC_DIALOG_EVAL, BM_GETCHECK, 0, 0);
+	GetDlgItemTextW(hdlg, IDC_DIALOG_EVAL_LIM, wstr.data(), static_cast<int>(wstr.size()));
+	config.dialog_eval_limit = std::stof(wstr);
+	config.dialog_always = SendDlgItemMessageW(hdlg, IDC_DIALOG_ALWAYS, BM_GETCHECK, 0, 0);
+	GetDlgItemTextW(hdlg, IDC_NTH, wstr.data(), static_cast<int>(wstr.size()));
+	config.num_th = std::stoi(wstr);
 	n_th_correction();
 }
 static LRESULT CALLBACK
@@ -743,8 +768,8 @@ func_config_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 			sep_now = Separator::TAB;
 		} else if (lwparam == IDC_DIALOG) {
 			set_dialog_enableness_ex(hdlg,
-				SendDlgItemMessageA(hdlg, IDC_DIALOG, BM_GETCHECK, 0, 0),
-				!SendDlgItemMessageA(hdlg, IDC_DIALOG_ALWAYS, BM_GETCHECK, 0, 0));
+				SendDlgItemMessageW(hdlg, IDC_DIALOG, BM_GETCHECK, 0, 0),
+				!SendDlgItemMessageW(hdlg, IDC_DIALOG_ALWAYS, BM_GETCHECK, 0, 0));
 		} else if (lwparam == IDC_DIALOG_EVAL) {
 			EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL_LIM), SendDlgItemMessageA(hdlg, IDC_DIALOG_EVAL, BM_GETCHECK, 0, 0));
 		} else if (lwparam == IDC_DIALOG_ALWAYS) {
@@ -757,7 +782,7 @@ func_config_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 BOOL
 func_config(HWND hwnd, HINSTANCE dll_hinst)
 {
-	DialogBox(dll_hinst, "CONFIG", hwnd, reinterpret_cast<DLGPROC>(func_config_proc));
+	DialogBoxW(dll_hinst, L"CONFIG", hwnd, reinterpret_cast<DLGPROC>(func_config_proc));
 	return TRUE;
 }
 int
