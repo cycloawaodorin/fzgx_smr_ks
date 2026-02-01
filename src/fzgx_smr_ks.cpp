@@ -1,10 +1,9 @@
 ﻿#include <windows.h>
 #include <cmath>
-#include <iterator>
 #include <memory>
 #include <thread>
-#include <string>
 #include <format>
+#include <fstream>
 #include "output.hpp"
 #include "resource_definition.h"
 #include "version.hpp"
@@ -455,7 +454,7 @@ func_preview_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 		DeleteObject(hBitmapD);
 		return TRUE;
 	} else if (umsg==WM_COMMAND) {
-		std::wstring wstr(15, 0);
+		std::wstring wstr(15, L'\0');
 		WORD lwparam = LOWORD(wparam);
 		if (lwparam == IDCANCEL ) {
 			cancel = true;
@@ -624,13 +623,11 @@ func_output(OUTPUT_INFO *oip_org)
 	if (cancel) {
 		return TRUE;
 	}
-	HANDLE fp;
-	fp = CreateFileA(oip->savefile, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	if ( fp == INVALID_HANDLE_VALUE ) { return FALSE; }
+	std::ofstream ofs(oip->savefile, std::ios::binary);
+	if (!ofs.is_open()) { return FALSE; }
 	for ( int i=0; i<oip->n; i++ ) {
 		if (oip->func_is_abort()) { break; }
 		oip->func_rest_time_disp(i, oip->n);
-		DWORD dw;
 		std::string str;
 		set_estimates(static_cast<unsigned char *>(oip->func_get_video(i)));
 		if (config.dialog) {
@@ -638,7 +635,7 @@ func_output(OUTPUT_INFO *oip_org)
 				preview_frame = i;
 				DialogBoxW(GetModuleHandleW(auo_filename.c_str()), L"CORRECT", GetActiveWindow(), reinterpret_cast<DLGPROC>(func_correct_proc));
 				if (cancel) {
-					CloseHandle(fp); return TRUE;
+					ofs.close(); return TRUE;
 				}
 			}
 		}
@@ -647,9 +644,9 @@ func_output(OUTPUT_INFO *oip_org)
 		} else {
 			str = std::format("{:s}\n", est_str);
 		}
-		WriteFile(fp, str.c_str(), static_cast<DWORD>(str.length()), &dw, nullptr);
+		ofs << str;
 	}
-	CloseHandle(fp);
+	ofs.close();
 	return TRUE;
 }
 
@@ -723,7 +720,7 @@ n_th_correction()
 static void
 setup_config(HWND hdlg)
 {
-	std::wstring wstr(15, 0);
+	std::wstring wstr(15, L'\0');
 	GetDlgItemTextW(hdlg, IDC_X, wstr.data(), static_cast<int>(wstr.size()));
 	config.start_x = std::stoi(wstr);
 	GetDlgItemTextW(hdlg, IDC_Y, wstr.data(), static_cast<int>(wstr.size()));
@@ -771,9 +768,9 @@ func_config_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 				SendDlgItemMessageW(hdlg, IDC_DIALOG, BM_GETCHECK, 0, 0),
 				!SendDlgItemMessageW(hdlg, IDC_DIALOG_ALWAYS, BM_GETCHECK, 0, 0));
 		} else if (lwparam == IDC_DIALOG_EVAL) {
-			EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL_LIM), SendDlgItemMessageA(hdlg, IDC_DIALOG_EVAL, BM_GETCHECK, 0, 0));
+			EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL_LIM), SendDlgItemMessageW(hdlg, IDC_DIALOG_EVAL, BM_GETCHECK, 0, 0));
 		} else if (lwparam == IDC_DIALOG_ALWAYS) {
-			set_dialog_enableness(hdlg, !SendDlgItemMessageA(hdlg, IDC_DIALOG_ALWAYS, BM_GETCHECK, 0, 0));
+			set_dialog_enableness(hdlg, !SendDlgItemMessageW(hdlg, IDC_DIALOG_ALWAYS, BM_GETCHECK, 0, 0));
 		}
 		return TRUE;
 	}

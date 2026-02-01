@@ -9,7 +9,10 @@
 ## 1.0.2 2021/10/19
 - Update link to L-SMASH Works plugin.
 
-## 1.0.3 2025/01/29
+## 1.0.3 2026/01/29
 - Fix version number.
 - Move document images from the exclusive branch.
 - Follow C++23.
+
+## 1.0.4 2026/02/01
+- Alter internal processing.
