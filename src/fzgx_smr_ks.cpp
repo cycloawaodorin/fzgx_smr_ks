@@ -408,11 +408,11 @@ static bool
 check_video_size()
 {
 	if (oip->w < window_width || oip->h < height) {
-		std::string str = std::format(
-			"動画は{}x{}以上のサイズが必要です(given: {}x{})．\n出力を中止します．",
+		std::wstring wstr = std::format(
+			L"動画は{}x{}以上のサイズが必要です(given: {}x{})．\n出力を中止します．",
 			window_width, height, oip->w, oip->h
 		);
-		MessageBoxW(GetActiveWindow(), Utf8ToUtf16(str).c_str(), nullptr, MB_OK);
+		MessageBoxW(GetActiveWindow(), wstr.c_str(), nullptr, MB_OK);
 		return true;
 	}
 	correct_values();
@@ -435,12 +435,12 @@ func_preview_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 	static HBITMAP hBitmap, hBitmapD;
 	static unsigned char *bmp;
 	if (umsg == WM_INITDIALOG) {
-		std::string str = std::format("{}", config.start_x).c_str();
-		SetDlgItemTextW(hdlg, IDC_X, Utf8ToUtf16(str).c_str());
-		str = std::format("{}", config.start_y);
-		SetDlgItemTextW(hdlg, IDC_Y, Utf8ToUtf16(str).c_str());
-		str = std::format("{}", preview_frame);
-		SetDlgItemTextW(hdlg, IDC_FRAME, Utf8ToUtf16(str).c_str());
+		std::wstring wstr = std::format(L"{}", config.start_x).c_str();
+		SetDlgItemTextW(hdlg, IDC_X, wstr.c_str());
+		wstr = std::format(L"{}", config.start_y);
+		SetDlgItemTextW(hdlg, IDC_Y, wstr.c_str());
+		wstr = std::format(L"{}", preview_frame);
+		SetDlgItemTextW(hdlg, IDC_FRAME, wstr.c_str());
 		hBitmap = LoadBitmap(GetModuleHandleW(auo_filename.c_str()), "FFCK");
 		BITMAPINFO bmi = {
 			{sizeof(BITMAPINFOHEADER), window_width, height, 1, 24, BI_RGB, 0, 0, 0, 0, 0},

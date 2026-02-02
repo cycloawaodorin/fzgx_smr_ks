@@ -16,3 +16,6 @@
 
 ## 1.0.4 2026/02/01
 - Alter internal processing.
+
+## 1.0.5 2026/02/02
+- Remove remaining futile conversions.
