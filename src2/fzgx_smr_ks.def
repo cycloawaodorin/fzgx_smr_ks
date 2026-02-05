@@ -1,0 +1,6 @@
+LIBRARY fzgx_smr_ks
+
+EXPORTS
+	GetOutputPluginTable @1
+	InitializeConfig @2
+	UninitializePlugin @3

@@ -8,11 +8,11 @@ LIBS = -static -lstdc++ -lwinpthread -lGdi32
 RM = rm -f
 SH = bash
 
-TARGET = fzgx_smr_ks.auo
+TARGET = fzgx_smr_ks.auo2
 OBJ = fzgx_smr_ks.o
 SRC = fzgx_smr_ks.cpp
 SUBSRCS = weights0.cpp
-HDRS = output.hpp resource_definition.h version.hpp
+HDRS = output2.hpp config2.hpp resource_definition.h version.hpp
 RES = fzgx_smr_ks.res
 DEF = fzgx_smr_ks.def
 
