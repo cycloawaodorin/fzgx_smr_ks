@@ -39,4 +39,5 @@ clean:
 release:
 	make all
 	cp -f $(TARGET) ../
+	$(SH) makezip.sh fzgx_smr_ks
 	make clean

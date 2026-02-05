@@ -19,3 +19,6 @@
 
 ## 1.0.5 2026/02/02
 - Remove remaining futile conversions.
+
+## 2.0.0 2026/02/05
+- The first version for AviUtl ExEdit2.
