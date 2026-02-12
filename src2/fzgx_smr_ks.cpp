@@ -1,4 +1,4 @@
-﻿#include <windows.h>
+﻿#include <Windows.h>
 #include <cmath>
 #include <thread>
 #include <format>
@@ -565,7 +565,7 @@ func_correct_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 	} else if (umsg==WM_COMMAND) {
 		WORD lwparam = LOWORD(wparam);
 		if (lwparam == IDCANCEL ) {
-			cancel = TRUE;
+			cancel = true;
 			EndDialog(hdlg, LOWORD(wparam));
 		} else if (lwparam == IDOK) {
 			GetDlgItemTextA(hdlg, IDC_EDIT, est_str, 5);
@@ -596,15 +596,15 @@ func_output(OUTPUT_INFO *oip_org)
 {
 	oip = oip_org;
 	if (check_video_size()) {
-		return TRUE;
+		return true;
 	}
 	
-	cancel = FALSE;
+	cancel = false;
 	if (config.preview) {
-		DialogBoxW(GetModuleHandleW(auo_filename.c_str()), L"PREVIEW", GetActiveWindow(), reinterpret_cast<DLGPROC>(func_preview_proc));
+		DialogBoxW(GetModuleHandleW(auo_filename.c_str()), L"PREVIEW", GetActiveWindow(), func_preview_proc);
 	}
 	if (cancel) {
-		return TRUE;
+		return true;
 	}
 	std::ofstream ofs(oip->savefile, std::ios::binary);
 	if (!ofs.is_open()) { return false; }
@@ -616,7 +616,7 @@ func_output(OUTPUT_INFO *oip_org)
 		if (config.dialog) {
 			if ( config.dialog_always || dialog_flags.unmatch || dialog_flags.cnn_low ) {
 				preview_frame = i;
-				DialogBoxW(GetModuleHandleW(auo_filename.c_str()), L"CORRECT", GetActiveWindow(), reinterpret_cast<DLGPROC>(func_correct_proc));
+				DialogBoxW(GetModuleHandleW(auo_filename.c_str()), L"CORRECT", GetActiveWindow(), func_correct_proc);
 				if (cancel) {
 					ofs.close(); return true;
 				}
@@ -782,7 +782,7 @@ func_config_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 static bool
 func_config(HWND hwnd, HINSTANCE dll_hinst)
 {
-	DialogBoxW(dll_hinst, L"CONFIG", hwnd, reinterpret_cast<DLGPROC>(func_config_proc));
+	DialogBoxW(dll_hinst, L"CONFIG", hwnd, func_config_proc);
 	save_config();
 	
 	return true;
@@ -808,7 +808,7 @@ save_config()
 {
 	std::ofstream ofs(config_path.c_str(), std::ios::binary);
 	if ( !ofs.is_open() ) { return; }
-	ofs.write(reinterpret_cast<char *>(&config), sizeof(config));
+	ofs.write(reinterpret_cast<const char *>(&config), sizeof(config));
 	ofs.close();
 }
 

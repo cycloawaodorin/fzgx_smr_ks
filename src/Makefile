@@ -8,13 +8,14 @@ LIBS = -static -lstdc++ -lwinpthread -lGdi32
 RM = rm -f
 SH = bash
 
-TARGET = fzgx_smr_ks.auo
-OBJ = fzgx_smr_ks.o
-SRC = fzgx_smr_ks.cpp
+LIBNAME = fzgx_smr_ks
+TARGET = $(LIBNAME).auo
+OBJ = $(LIBNAME).o
+SRC = $(LIBNAME).cpp
 SUBSRCS = weights0.cpp
 HDRS = output.hpp resource_definition.h version.hpp
-RES = fzgx_smr_ks.res
-DEF = fzgx_smr_ks.def
+RES = $(LIBNAME).res
+DEF = $(LIBNAME).def
 
 .SUFFIXES: .cpp .o
 .SUFFIXES: .rc .res
@@ -31,7 +32,7 @@ $(OBJ): $(SRCS) $(HDRS) $(SUBSRCS)
 .rc.res:
 	windres --input-format=rc --output-format=coff -o $@ $<
 
-fzgx_smr_ks.res: resource_definition.h
+$(RES): resource_definition.h
 
 clean:
 	$(RM) $(TARGET) $(OBJ) $(RES)
@@ -39,5 +40,5 @@ clean:
 release:
 	make all
 	cp -f $(TARGET) ../
-	$(SH) makezip.sh fzgx_smr_ks
+	$(SH) makezip.sh $(LIBNAME)
 	make clean

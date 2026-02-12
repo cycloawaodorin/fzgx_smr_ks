@@ -1,6 +1,5 @@
 ﻿#include <windows.h>
 #include <cmath>
-#include <memory>
 #include <thread>
 #include <format>
 #include <fstream>
@@ -429,7 +428,7 @@ set_bmp(unsigned char *bmp, const int frame)
 			org+(oip->h-config.start_y-height+y)*dib_width+config.start_x*3, window_byte_width);
 	}
 }
-static LRESULT CALLBACK
+static INT_PTR CALLBACK
 func_preview_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 {
 	static HBITMAP hBitmap, hBitmapD;
@@ -556,7 +555,7 @@ set_estimates(const unsigned char *org)
 	}
 }
 
-static LRESULT CALLBACK
+static INT_PTR CALLBACK
 func_correct_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 {
 	static HBITMAP hBitmapD;
@@ -575,7 +574,7 @@ func_correct_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 	} else if (umsg==WM_COMMAND) {
 		WORD lwparam = LOWORD(wparam);
 		if (lwparam == IDCANCEL ) {
-			cancel = TRUE;
+			cancel = true;
 			EndDialog(hdlg, LOWORD(wparam));
 		} else if (lwparam == IDOK) {
 			GetDlgItemTextA(hdlg, IDC_EDIT, est_str, 5);
@@ -616,9 +615,9 @@ func_output(OUTPUT_INFO *oip_org)
 		return TRUE;
 	}
 	
-	cancel = FALSE;
+	cancel = false;
 	if (config.preview) {
-		DialogBoxW(GetModuleHandleW(auo_filename.c_str()), L"PREVIEW", GetActiveWindow(), reinterpret_cast<DLGPROC>(func_preview_proc));
+		DialogBoxW(GetModuleHandleW(auo_filename.c_str()), L"PREVIEW", GetActiveWindow(), func_preview_proc);
 	}
 	if (cancel) {
 		return TRUE;
@@ -633,7 +632,7 @@ func_output(OUTPUT_INFO *oip_org)
 		if (config.dialog) {
 			if ( config.dialog_always || dialog_flags.unmatch || dialog_flags.cnn_low ) {
 				preview_frame = i;
-				DialogBoxW(GetModuleHandleW(auo_filename.c_str()), L"CORRECT", GetActiveWindow(), reinterpret_cast<DLGPROC>(func_correct_proc));
+				DialogBoxW(GetModuleHandleW(auo_filename.c_str()), L"CORRECT", GetActiveWindow(), func_correct_proc);
 				if (cancel) {
 					ofs.close(); return TRUE;
 				}
@@ -739,7 +738,7 @@ setup_config(HWND hdlg)
 	config.num_th = std::stoi(wstr);
 	n_th_correction();
 }
-static LRESULT CALLBACK
+static INT_PTR CALLBACK
 func_config_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 {
 	if (umsg == WM_INITDIALOG) {
@@ -779,7 +778,7 @@ func_config_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 BOOL
 func_config(HWND hwnd, HINSTANCE dll_hinst)
 {
-	DialogBoxW(dll_hinst, L"CONFIG", hwnd, reinterpret_cast<DLGPROC>(func_config_proc));
+	DialogBoxW(dll_hinst, L"CONFIG", hwnd, func_config_proc);
 	return TRUE;
 }
 int
