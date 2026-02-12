@@ -575,7 +575,7 @@ func_correct_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 	} else if (umsg==WM_COMMAND) {
 		WORD lwparam = LOWORD(wparam);
 		if (lwparam == IDCANCEL ) {
-			cancel = TRUE;
+			cancel = true;
 			EndDialog(hdlg, LOWORD(wparam));
 		} else if (lwparam == IDOK) {
 			GetDlgItemTextA(hdlg, IDC_EDIT, est_str, 5);
@@ -616,7 +616,7 @@ func_output(OUTPUT_INFO *oip_org)
 		return TRUE;
 	}
 	
-	cancel = FALSE;
+	cancel = false;
 	if (config.preview) {
 		DialogBoxW(GetModuleHandleW(auo_filename.c_str()), L"PREVIEW", GetActiveWindow(), reinterpret_cast<DLGPROC>(func_preview_proc));
 	}
