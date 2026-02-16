@@ -419,7 +419,7 @@ set_bmp(unsigned char *bmp, const int frame)
 	}
 }
 
-static LRESULT CALLBACK
+static INT_PTR CALLBACK
 func_preview_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 {
 	static HBITMAP hBitmap, hBitmapD;
@@ -546,7 +546,7 @@ set_estimates(const unsigned char *org)
 	}
 }
 
-static LRESULT CALLBACK
+static INT_PTR CALLBACK
 func_correct_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 {
 	static HBITMAP hBitmapD;
@@ -566,11 +566,11 @@ func_correct_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 		WORD lwparam = LOWORD(wparam);
 		if (lwparam == IDCANCEL ) {
 			cancel = true;
-			EndDialog(hdlg, LOWORD(wparam));
+			EndDialog(hdlg, lwparam);
 		} else if (lwparam == IDOK) {
 			GetDlgItemTextA(hdlg, IDC_EDIT, est_str, 5);
 			est_str[4] = 0;
-			EndDialog(hdlg, LOWORD(wparam));
+			EndDialog(hdlg, lwparam);
 		} else {
 			return FALSE;
 		}
@@ -736,7 +736,7 @@ setup_config(const HWND &hdlg)
 	n_th_correction();
 }
 
-static LRESULT CALLBACK
+static INT_PTR CALLBACK
 func_config_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 {
 	if (umsg == WM_INITDIALOG) {
