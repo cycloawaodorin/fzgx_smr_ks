@@ -92,21 +92,25 @@ static std::size_t n_th=std::thread::hardware_concurrency();
 
 template <class T>
 static void
-parallel_do(void (*f)(T*, const std::size_t&, const std::size_t&), T *p, const std::size_t &n)
+parallel_do(void (T::*f)(const std::size_t&, const std::size_t&), T *p, const std::size_t &n)
 {
-	auto threads=std::make_unique<std::thread[]>(n);
-	for (std::size_t i=0; i<n; i++) {
-		threads[i] = std::thread(f, p, i, n);
-	}
-	for (std::size_t i=0; i<n; i++) {
-		threads[i].join();
+	if ( 1 < n ) {
+		auto threads=std::make_unique<std::thread[]>(n);
+		for (std::size_t i=0; i<n; i++) {
+			threads[i] = std::thread(f, p, i, n);
+		}
+		for (std::size_t i=0; i<n; i++) {
+			threads[i].join();
+		}
+	} else {
+		(p->*f)(0, n);
 	}
 }
 
 class Cnn {
 private:
 #include "weights0.cpp"
-	constexpr void
+	void
 	conv0(const unsigned char *src)
 	{
 		for (std::size_t i=0; i<std::size(inter0); i++) {
@@ -127,7 +131,7 @@ private:
 			}
 		}
 	}
-	constexpr void
+	void
 	conv1()
 	{
 		for (std::size_t i=0; i<std::size(inter1); i++) {
@@ -145,7 +149,7 @@ private:
 			}
 		}
 	}
-	constexpr void
+	void
 	pooling()
 	{
 		for (std::size_t i=0; i<std::size(inter2); i++) {
@@ -163,7 +167,7 @@ private:
 			}
 		}
 	}
-	constexpr void
+	void
 	conv2()
 	{
 		for (std::size_t i=0; i<std::size(inter3); i++) {
@@ -184,7 +188,7 @@ private:
 			}
 		}
 	}
-	constexpr void
+	void
 	dense0()
 	{
 		for (std::size_t i=0; i<std::size(Dense0B); i++) {
@@ -202,7 +206,7 @@ private:
 			}
 		}
 	}
-	constexpr void
+	void
 	dense1()
 	{
 		float sum = 0.0f;
@@ -234,7 +238,7 @@ public:
 class Dnn {
 private:
 #include "weights1.cpp"
-	constexpr void
+	void
 	conv0(const unsigned char *src)
 	{
 		for (std::size_t i=0; i<std::size(inter0); i++) {
@@ -255,7 +259,7 @@ private:
 			}
 		}
 	}
-	constexpr void
+	void
 	conv1()
 	{
 		for (std::size_t i=0; i<std::size(inter1); i++) {
@@ -273,7 +277,7 @@ private:
 			}
 		}
 	}
-	constexpr void
+	void
 	pooling()
 	{
 		for (std::size_t i=0; i<std::size(inter2); i++) {
@@ -291,7 +295,7 @@ private:
 			}
 		}
 	}
-	constexpr void
+	void
 	conv2()
 	{
 		for (std::size_t i=0; i<std::size(inter3); i++) {
@@ -312,7 +316,7 @@ private:
 			}
 		}
 	}
-	constexpr void
+	void
 	dense0()
 	{
 		for (std::size_t i=0; i<std::size(Dense0B); i++) {
@@ -330,7 +334,7 @@ private:
 			}
 		}
 	}
-	constexpr void
+	void
 	dense1()
 	{
 		float sum = 0.0f;
@@ -365,25 +369,25 @@ public:
 	const unsigned char *src;
 	Cnn cnn[4];
 	Dnn dnn[4];
-	static void
-	invoke(Nets *p, const std::size_t &i, const std::size_t &n)
+	void
+	invoke(const std::size_t &i, const std::size_t &n)
 	{
 		const std::size_t start = (i*8)/n;
 		const std::size_t end = ((i+1)*8)/n;
 		for (std::size_t j=start; j<end; j++) {
 			const std::size_t j_=j%4;
-			const unsigned char *s = p->src + (j_*width*3);
+			const unsigned char *s = src + (j_*width*3);
 			if (j<4) {
-				p->cnn[j_].predict(s);
+				cnn[j_].predict(s);
 			} else {
-				p->dnn[j_].predict(s);
+				dnn[j_].predict(s);
 			}
 		}
 	}
 };
 static auto nn=std::make_unique<Nets>();
 
-constexpr static void
+static void
 correct_values()
 {
 	if ( config.start_x < 0 ) {
@@ -651,7 +655,7 @@ func_output(OUTPUT_INFO *oip_org)
 
 // コンフィグ関係
 static Separator sep_now=Separator::NONE;
-constexpr static void
+static void
 set_offset_enableness(HWND hdlg, const BOOL &val)
 {
 	EnableWindow(GetDlgItem(hdlg, IDC_OFFSET), val);
@@ -659,13 +663,13 @@ set_offset_enableness(HWND hdlg, const BOOL &val)
 	EnableWindow(GetDlgItem(hdlg, IDC_COMMA), val);
 	EnableWindow(GetDlgItem(hdlg, IDC_TAB), val);
 }
-constexpr static void
+static void
 set_dialog_enableness(HWND hdlg, const BOOL &val)
 {
 	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL), val);
 	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL_LIM), val);
 }
-constexpr static void
+static void
 set_dialog_enableness_ex(HWND hdlg, const BOOL &val, const BOOL &val2)
 {
 	set_dialog_enableness(hdlg, val&&val2);
@@ -704,7 +708,7 @@ init_dialog(HWND &hdlg)
 	wstr = std::format(L"{}", config.num_th);
 	SetDlgItemTextW(hdlg, IDC_NTH, wstr.c_str());
 }
-constexpr static void
+static void
 n_th_correction()
 {
 	int nt = config.num_th;

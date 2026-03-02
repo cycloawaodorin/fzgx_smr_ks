@@ -34,3 +34,4 @@
 
 ## 2.0.2 2026/03/02
 - Use std::make_unique instead of new.
+- Add threadless mode and it is used by default.

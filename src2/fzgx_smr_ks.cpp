@@ -32,7 +32,7 @@ static struct {
 	float dialog_eval_limit;
 	bool dialog_always;
 	int num_th;
-} config = {536, 413, true, true, 0, Separator::SPACE, true, true, 0.95f, false, 0};
+} config = {536, 413, true, true, 0, Separator::SPACE, true, true, 0.95f, false, 1};
 
 static const std::wstring auo_filename = L"fzgx_smr_ks.auo2";
 static const std::wstring config_filename = L"fzgx_smr_ks.config";
@@ -72,14 +72,18 @@ static std::size_t n_th=std::thread::hardware_concurrency();
 
 template <class T>
 static void
-parallel_do(void (*f)(T*, std::size_t, const std::size_t&), T *p, const std::size_t &n)
+parallel_do(void (T::*f)(std::size_t, const std::size_t&), T *p, const std::size_t &n)
 {
-	auto threads=std::make_unique<std::thread[]>(n);
-	for (std::size_t i=0; i<n; i++) {
-		threads[i] = std::thread(f, p, i, n);
-	}
-	for (std::size_t i=0; i<n; i++) {
-		threads[i].join();
+	if ( 1 < n ) {
+		auto threads=std::make_unique<std::thread[]>(n);
+		for (std::size_t i=0; i<n; i++) {
+			threads[i] = std::thread(f, p, i, n);
+		}
+		for (std::size_t i=0; i<n; i++) {
+			threads[i].join();
+		}
+	} else {
+		(p->*f)(0, n);
 	}
 }
 
@@ -346,18 +350,18 @@ public:
 	const unsigned char *src;
 	Cnn cnn[4];
 	Dnn dnn[4];
-	static void
-	invoke(Nets *p, std::size_t i, const std::size_t &n)
+	void
+	invoke(std::size_t i, const std::size_t &n)
 	{
 		const std::size_t start = (i*8)/n;
 		const std::size_t end = ((i+1)*8)/n;
 		for (std::size_t j=start; j<end; j++) {
 			const std::size_t j_=j%4;
-			const unsigned char *s = p->src + (j_*width*3);
+			const unsigned char *s = src + (j_*width*3);
 			if (j<4) {
-				p->cnn[j_].predict(s);
+				cnn[j_].predict(s);
 			} else {
-				p->dnn[j_].predict(s);
+				dnn[j_].predict(s);
 			}
 		}
 	}
