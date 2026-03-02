@@ -1,4 +1,4 @@
-﻿#include <windows.h>
+﻿#include <Windows.h>
 #include <cmath>
 #include <thread>
 #include <format>
@@ -94,7 +94,7 @@ template <class T>
 static void
 parallel_do(void (*f)(T*, const std::size_t&, const std::size_t&), T *p, const std::size_t &n)
 {
-	std::unique_ptr<std::thread[]> threads(new std::thread[n]);
+	auto threads=std::make_unique<std::thread[]>(n);
 	for (std::size_t i=0; i<n; i++) {
 		threads[i] = std::thread(f, p, i, n);
 	}
@@ -381,7 +381,7 @@ public:
 		}
 	}
 };
-static std::unique_ptr<Nets> nn(new Nets());
+static auto nn=std::make_unique<Nets>();
 
 constexpr static void
 correct_values()
