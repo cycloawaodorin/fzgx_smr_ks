@@ -26,6 +26,9 @@
 ## 1.0.7 2026/03/02
 - Use std::make_unique instead of new.
 
+## 1.0.8 2026/03/04
+- Implemented ThreadPool.
+
 ## 2.0.0 2026/02/05
 - The first version for AviUtl ExEdit2.
 
@@ -35,3 +38,6 @@
 ## 2.0.2 2026/03/02
 - Use std::make_unique instead of new.
 - Add threadless mode and it is used by default.
+
+## 2.0.3 2026/03/04
+- Implemented ThreadPool that makes it fast in multithread-mode.
