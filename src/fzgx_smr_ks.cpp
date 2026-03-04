@@ -1,6 +1,10 @@
 ﻿#include <Windows.h>
 #include <cmath>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <functional>
+#include <queue>
 #include <format>
 #include <fstream>
 #include "output.hpp"
@@ -63,7 +67,7 @@ GetOutputPluginTable()
 		const_cast<LPSTR>(Utf8ToCp932(PLUGIN_NAME).c_str()),
 		filefilter,
 		const_cast<LPSTR>(Utf8ToCp932(PLUGIN_NAME " " VERSION " by KAZOON").c_str()),
-		nullptr,
+		func_init,
 		func_exit,
 		func_output,
 		func_config,
@@ -88,24 +92,111 @@ static struct {
 	bool cnn_low, unmatch;
 } dialog_flags;
 static char est_str[5]={0, 0, 0, 0, 0};
-static std::size_t n_th=std::thread::hardware_concurrency();
+static std::size_t n_th=8;
 
-template <class T>
-static void
-parallel_do(void (T::*f)(const std::size_t&, const std::size_t&), T *p, const std::size_t &n)
-{
-	if ( 1 < n ) {
-		auto threads=std::make_unique<std::thread[]>(n);
-		for (std::size_t i=0; i<n; i++) {
-			threads[i] = std::thread(f, p, i, n);
+class ThreadPool {
+private:
+	class Thread {
+	public:
+		std::thread thread;
+		bool ready;
+		std::mutex mx;
+		std::condition_variable cv;
+		Thread() : ready(false) {}
+	};
+	std::unique_ptr<Thread[]> threads;
+	std::size_t size;
+	std::function<void(std::size_t)> func;
+	std::mutex gmx;
+	std::queue<std::size_t> jobs;
+	bool terminate;
+	void
+	listen(Thread *th)
+	{
+		for (;;) {
+			{ // ジョブが来るまで待機
+				std::unique_lock<std::mutex> lk(th->mx);
+				th->cv.wait(lk, [&]{ return (th->ready); });
+			}
+			if ( terminate ) { // スレッドプールの破棄
+				return;
+			}
+			for (std::size_t i=SIZE_MAX; !jobs.empty();) {
+				{ // ジョブの取り出し
+					std::lock_guard<std::mutex> lk(gmx);
+					if ( !jobs.empty() ) {
+						i = jobs.front();
+						jobs.pop();
+					}
+				}
+				if ( i < SIZE_MAX ) { // ジョブ実行
+					func(i);
+				}
+			}
+			{ // 全ジョブ完了
+				std::lock_guard<std::mutex> lk(th->mx);
+				th->ready = false;
+			}
+			th->cv.notify_one();
 		}
-		for (std::size_t i=0; i<n; i++) {
-			threads[i].join();
-		}
-	} else {
-		(p->*f)(0, n);
 	}
-}
+public:
+	ThreadPool(std::size_t size_) : size(size_), terminate(false)
+	{
+		threads = std::make_unique<Thread[]>(size);
+		for (std::size_t i=0; i<size; i++) {
+			threads[i].thread = std::thread(listen, this, &threads[i]);
+		}
+	}
+	~ThreadPool()
+	{
+		{
+			for (std::size_t i=0; i<size; i++) {
+				threads[i].mx.lock();
+				threads[i].ready = true;
+			}
+			terminate = true;
+			for (std::size_t i=0; i<size; i++) {
+				threads[i].mx.unlock();
+				threads[i].cv.notify_all();
+			}
+		}
+		for (std::size_t i=0; i<size; i++) {
+			threads[i].thread.join();
+		}
+	}
+	std::size_t
+	get_size()
+	{
+		return size;
+	}
+	void
+	parallel_do(std::function<void(std::size_t)> f, std::size_t n)
+	{
+		if ( size == 1 ) {
+			for ( std::size_t i=0; i<n; i++ ) {
+				f(i);
+			}
+			return;
+		}
+		func = f; // ジョブ関数
+		for (std::size_t i=0; i<n; i++) {
+			jobs.push(i); // ジョブ引数をセット
+		}
+		for (std::size_t i=0; i<size; i++) { // ワーカー起動
+			{
+				std::lock_guard<std::mutex> lk(threads[i].mx);
+				threads[i].ready = true;
+			}
+			threads[i].cv.notify_one();
+		}
+		for (std::size_t i=0; i<size; i++) { // 全ワーカーの終了を待つ
+			std::unique_lock<std::mutex> lk(threads[i].mx);
+			threads[i].cv.wait(lk, [&]{ return !(threads[i].ready); });
+		}
+	}
+};
+static std::unique_ptr<ThreadPool> TP;
 
 class Cnn {
 private:
@@ -370,18 +461,14 @@ public:
 	Cnn cnn[4];
 	Dnn dnn[4];
 	void
-	invoke(const std::size_t &i, const std::size_t &n)
+	invoke(const std::size_t i)
 	{
-		const std::size_t start = (i*8)/n;
-		const std::size_t end = ((i+1)*8)/n;
-		for (std::size_t j=start; j<end; j++) {
-			const std::size_t j_=j%4;
-			const unsigned char *s = src + (j_*width*3);
-			if (j<4) {
-				cnn[j_].predict(s);
-			} else {
-				dnn[j_].predict(s);
-			}
+		const std::size_t j=i%4;
+		const unsigned char *s = &src[j*width*3];
+		if (i<4) {
+			cnn[j].predict(s);
+		} else {
+			dnn[j].predict(s);
 		}
 	}
 };
@@ -527,7 +614,8 @@ set_estimates(const unsigned char *org)
 	dialog_flags.cnn_low = false;
 	dialog_flags.unmatch = false;
 	nn->src = org+((oip->h-config.start_y-height)*dib_width+config.start_x*3);
-	parallel_do(Nets::invoke, nn.get(), n_th);
+	auto p = nn.get();
+	TP->parallel_do([&p](std::size_t i){p->invoke(i);}, 8);
 	for (int i=0; i<4; i++) {
 		int c_max_j=0, d_max_j=0, max_j=0;
 		float c_max=nn->cnn[i].output[c_max_j], d_max=nn->dnn[i].output[d_max_j];
@@ -602,6 +690,13 @@ func_correct_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 		EndPaint(hdlg, &ps);
 	}
 	return FALSE;
+}
+
+BOOL
+func_init()
+{
+	TP = std::make_unique<ThreadPool>(n_th);
+	return TRUE;
 }
 
 BOOL
@@ -718,7 +813,13 @@ n_th_correction()
 			nt = 1;
 		}
 	}
+	if ( 8 < nt ) {
+		nt = 8;
+	}
 	n_th = static_cast<std::size_t>(nt);
+	if ( TP->get_size() != n_th ) {
+		TP = std::make_unique<ThreadPool>(n_th);
+	}
 }
 static void
 setup_config(HWND hdlg)
