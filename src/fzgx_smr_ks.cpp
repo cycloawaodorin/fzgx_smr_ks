@@ -103,11 +103,11 @@ private:
 		bool ready=false;
 	};
 	std::size_t size;
-	bool alive;
+	bool alive=true;
 	std::unique_ptr<Thread[]> threads;
 	std::function<void(std::size_t)> func;
-	std::atomic<std::size_t> current_i;
-	std::size_t max_i;
+	std::atomic<std::size_t> current_i=0uz;
+	std::size_t max_i=0uz;
 	void
 	listen(Thread *th)
 	{
@@ -130,8 +130,7 @@ private:
 		}
 	}
 public:
-	ThreadPool(std::size_t s=std::thread::hardware_concurrency())
-		: size(s), alive(true), current_i(0uz), max_i(0uz)
+	ThreadPool(std::size_t s=std::thread::hardware_concurrency()) : size(s)
 	{
 		threads = std::make_unique<Thread[]>(size);
 		for (auto i=0uz; i<size; i++) {
