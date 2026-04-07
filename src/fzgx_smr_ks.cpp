@@ -4,7 +4,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <functional>
-#include <queue>
+#include <atomic>
 #include <format>
 #include <fstream>
 #include "output.hpp"
@@ -78,11 +78,11 @@ GetOutputPluginTable()
 	return &opt;
 }
 
-constexpr static const int width = 19;
-constexpr static const int height = 26;
-constexpr static const int window_width = 19*4;
-constexpr static const int window_byte_width = 19*4*3;
-static int dib_width;
+constexpr static const std::size_t width = 19uz;
+constexpr static const std::size_t height = 26uz;
+constexpr static const std::size_t window_width = 19uz*4uz;
+constexpr static const std::size_t window_byte_width = 19uz*4uz*3uz;
+static std::size_t dib_width;
 constexpr static const char *separators = " ,\t";
 constexpr static const char *digits = "0123456789 ";
 static bool cancel;
@@ -96,104 +96,86 @@ static std::size_t n_th=8;
 
 class ThreadPool {
 private:
-	class Thread {
-	public:
+	struct Thread {
 		std::thread thread;
-		bool ready;
 		std::mutex mx;
 		std::condition_variable cv;
-		Thread() : ready(false) {}
+		bool ready=false;
 	};
-	std::unique_ptr<Thread[]> threads;
 	std::size_t size;
+	bool alive;
+	std::unique_ptr<Thread[]> threads;
 	std::function<void(std::size_t)> func;
-	std::mutex gmx;
-	std::queue<std::size_t> jobs;
-	bool terminate;
+	std::atomic<std::size_t> current_i;
+	std::size_t max_i;
 	void
 	listen(Thread *th)
 	{
-		for (;;) {
+		while (alive) {
 			{ // ジョブが来るまで待機
-				std::unique_lock<std::mutex> lk(th->mx);
-				th->cv.wait(lk, [&]{ return (th->ready); });
+				auto lk=std::unique_lock(th->mx);
+				th->cv.wait(lk, [th] { return th->ready; });
 			}
-			if ( terminate ) { // スレッドプールの破棄
-				return;
-			}
-			for (std::size_t i=SIZE_MAX; !jobs.empty();) {
-				{ // ジョブの取り出し
-					std::lock_guard<std::mutex> lk(gmx);
-					if ( !jobs.empty() ) {
-						i = jobs.front();
-						jobs.pop();
-					}
-				}
-				if ( i < SIZE_MAX ) { // ジョブ実行
+			for ( std::size_t i=max_i; current_i<max_i; ) { // ジョブの取り出しと実行
+				i = current_i++;
+				if ( i < max_i ) {
 					func(i);
 				}
 			}
 			{ // 全ジョブ完了
-				std::lock_guard<std::mutex> lk(th->mx);
+				auto lk=std::lock_guard(th->mx);
 				th->ready = false;
 			}
 			th->cv.notify_one();
 		}
 	}
 public:
-	ThreadPool(std::size_t size_) : size(size_), terminate(false)
+	ThreadPool(std::size_t s=std::thread::hardware_concurrency())
+		: size(s), alive(true), current_i(0uz), max_i(0uz)
 	{
 		threads = std::make_unique<Thread[]>(size);
-		for (std::size_t i=0; i<size; i++) {
-			threads[i].thread = std::thread(listen, this, &threads[i]);
+		for (auto i=0uz; i<size; i++) {
+			threads[i].thread = std::thread([this, i](){listen(&threads[i]);});
 		}
 	}
 	~ThreadPool()
 	{
 		{
-			for (std::size_t i=0; i<size; i++) {
-				threads[i].mx.lock();
-				threads[i].ready = true;
-			}
-			terminate = true;
-			for (std::size_t i=0; i<size; i++) {
-				threads[i].mx.unlock();
-				threads[i].cv.notify_all();
+			alive = false;
+			for (auto i=0uz; i<size; i++) {
+				{
+					auto lk=std::lock_guard(threads[i].mx);
+					threads[i].ready = true;
+				}
+				threads[i].cv.notify_one();
 			}
 		}
-		for (std::size_t i=0; i<size; i++) {
+		for (auto i=0uz; i<size; i++) {
 			threads[i].thread.join();
 		}
+	}
+	void
+	parallel_do(std::function<void(std::size_t)> f, std::size_t n)
+	{
+		func = f; // ジョブ関数
+		current_i = 0; max_i = n;
+		for (auto i=0uz; i<size; i++) { // ワーカー起動
+			{
+				auto lk=std::lock_guard(threads[i].mx);
+				threads[i].ready = true;
+			}
+			threads[i].cv.notify_one();
+		}
+		for (auto i=0uz; i<size; i++) { // 全ワーカーの終了を待つ
+			auto lk=std::unique_lock(threads[i].mx);
+			threads[i].cv.wait(lk, [this, i]{ return !(threads[i].ready); });
+		}
+		func = nullptr;
 	}
 	std::size_t
 	get_size()
 	{
 		return size;
-	}
-	void
-	parallel_do(std::function<void(std::size_t)> f, std::size_t n)
-	{
-		if ( size == 1 ) {
-			for ( std::size_t i=0; i<n; i++ ) {
-				f(i);
-			}
-			return;
-		}
-		func = f; // ジョブ関数
-		for (std::size_t i=0; i<n; i++) {
-			jobs.push(i); // ジョブ引数をセット
-		}
-		for (std::size_t i=0; i<size; i++) { // ワーカー起動
-			{
-				std::lock_guard<std::mutex> lk(threads[i].mx);
-				threads[i].ready = true;
-			}
-			threads[i].cv.notify_one();
-		}
-		for (std::size_t i=0; i<size; i++) { // 全ワーカーの終了を待つ
-			std::unique_lock<std::mutex> lk(threads[i].mx);
-			threads[i].cv.wait(lk, [&]{ return !(threads[i].ready); });
-		}
 	}
 };
 static std::unique_ptr<ThreadPool> TP;
@@ -204,14 +186,14 @@ private:
 	void
 	conv0(const unsigned char *src)
 	{
-		for (std::size_t i=0; i<std::size(inter0); i++) {
-			for (std::size_t j=0; j<std::size(inter0[i]); j++) {
-				for (std::size_t k=0; k<std::size(inter0[i][j]); k++) {
+		for (auto i=0uz; i<std::size(inter0); i++) {
+			for (auto j=0uz; j<std::size(inter0[i]); j++) {
+				for (auto k=0uz; k<std::size(inter0[i][j]); k++) {
 					inter0[i][j][k] = Conv0B[k];
-					for (std::size_t di=0; di<std::size(Conv0K); di++) {
-						for (std::size_t dj=0; dj<std::size(Conv0K[di]); dj++) {
-							for (std::size_t c=0; c<3; c++) {
-								inter0[i][j][k] += static_cast<float>(src[(height-i-di)*dib_width+(j+dj)*3+2-static_cast<int>(c)])*Conv0K[di][dj][c][k];
+					for (auto di=0uz; di<std::size(Conv0K); di++) {
+						for (auto dj=0uz; dj<std::size(Conv0K[di]); dj++) {
+							for (auto c=0uz; c<3uz; c++) {
+								inter0[i][j][k] = std::fmaf(src[(height-i-di)*dib_width+(j+dj)*3uz+2uz-c], Conv0K[di][dj][c][k], inter0[i][j][k]);
 							}
 						}
 					}
@@ -225,14 +207,14 @@ private:
 	void
 	conv1()
 	{
-		for (std::size_t i=0; i<std::size(inter1); i++) {
-			for (std::size_t j=0; j<std::size(inter1[i]); j++) {
-				for (std::size_t k=0; k<std::size(inter1[i][j]); k++) {
+		for (auto i=0uz; i<std::size(inter1); i++) {
+			for (auto j=0uz; j<std::size(inter1[i]); j++) {
+				for (auto k=0uz; k<std::size(inter1[i][j]); k++) {
 					inter1[i][j][k] = Conv1B[k];
-					for (std::size_t di=0; di<std::size(Conv1K); di++) {
-						for (std::size_t dj=0; dj<std::size(Conv1K[di]); dj++) {
-							for (std::size_t c=0; c<std::size(Conv1K[di][dj]); c++) {
-								inter1[i][j][k] += inter0[i+di][j+dj][c]*Conv1K[di][dj][c][k];
+					for (auto di=0uz; di<std::size(Conv1K); di++) {
+						for (auto dj=0uz; dj<std::size(Conv1K[di]); dj++) {
+							for (auto c=0uz; c<std::size(Conv1K[di][dj]); c++) {
+								inter1[i][j][k] = std::fma(inter0[i+di][j+dj][c], Conv1K[di][dj][c][k], inter1[i][j][k]);
 							}
 						}
 					}
@@ -243,14 +225,14 @@ private:
 	void
 	pooling()
 	{
-		for (std::size_t i=0; i<std::size(inter2); i++) {
-			for (std::size_t j=0; j<std::size(inter2[i]); j++) {
-				for (std::size_t k=0; k<std::size(inter2[i][j]); k++) {
+		for (auto i=0uz; i<std::size(inter2); i++) {
+			for (auto j=0uz; j<std::size(inter2[i]); j++) {
+				for (auto k=0uz; k<std::size(inter2[i][j]); k++) {
 					inter2[i][j][k] = 0.0f;
-					for (std::size_t di=0; di<2; di++) {
-						for (std::size_t dj=0; dj<2; dj++) {
-							if ( inter2[i][j][k] < inter1[i*2+di][j*2+dj][k] ) {
-								inter2[i][j][k] = inter1[i*2+di][j*2+dj][k];
+					for (auto di=0uz; di<2uz; di++) {
+						for (auto dj=0uz; dj<2uz; dj++) {
+							if ( inter2[i][j][k] < inter1[i*2uz+di][j*2uz+dj][k] ) {
+								inter2[i][j][k] = inter1[i*2uz+di][j*2uz+dj][k];
 							}
 						}
 					}
@@ -261,14 +243,14 @@ private:
 	void
 	conv2()
 	{
-		for (std::size_t i=0; i<std::size(inter3); i++) {
-			for (std::size_t j=0; j<std::size(inter3[i]); j++) {
-				for (std::size_t k=0; k<std::size(inter3[i][j]); k++) {
+		for (auto i=0uz; i<std::size(inter3); i++) {
+			for (auto j=0uz; j<std::size(inter3[i]); j++) {
+				for (auto k=0uz; k<std::size(inter3[i][j]); k++) {
 					inter3[i][j][k] = Conv2B[k];
-					for (std::size_t di=0; di<2; di++) {
-						for (std::size_t dj=0; dj<2; dj++) {
-							for (std::size_t c=0; c<std::size(Conv2K[di][dj]); c++) {
-								inter3[i][j][k] += inter2[i*2+di][j*2+dj][c]*Conv2K[di][dj][c][k];
+					for (auto di=0uz; di<2uz; di++) {
+						for (auto dj=0uz; dj<2uz; dj++) {
+							for (auto c=0uz; c<std::size(Conv2K[di][dj]); c++) {
+								inter3[i][j][k] = std::fma(inter2[i*2uz+di][j*2uz+dj][c], Conv2K[di][dj][c][k], inter3[i][j][k]);
 							}
 						}
 					}
@@ -282,13 +264,13 @@ private:
 	void
 	dense0()
 	{
-		for (std::size_t i=0; i<std::size(Dense0B); i++) {
+		for (auto i=0uz; i<std::size(Dense0B); i++) {
 			inter4[i] = Dense0B[i];
-			std::size_t j=0;
-			for (std::size_t a=0; a<std::size(inter3); a++) {
-				for (std::size_t b=0; b<std::size(inter3[a]); b++) {
-					for (std::size_t c=0; c<std::size(inter3[a][b]); c++) {
-						inter4[i] += inter3[a][b][c]*Dense0K[j++][i];
+			std::size_t j=0uz;
+			for (auto a=0uz; a<std::size(inter3); a++) {
+				for (auto b=0uz; b<std::size(inter3[a]); b++) {
+					for (auto c=0uz; c<std::size(inter3[a][b]); c++) {
+						inter4[i] = std::fma(inter3[a][b][c], Dense0K[j++][i], inter4[i]);
 					}
 				}
 			}
@@ -301,10 +283,10 @@ private:
 	dense1()
 	{
 		float sum = 0.0f;
-		for (std::size_t j=0; j<11; j++) {
+		for (auto j=0uz; j<11uz; j++) {
 			output[j] = Dense1B[j];
-			for (std::size_t k=0; k<std::size(Dense1K); k++) {
-				output[j] += inter4[k]*Dense1K[k][j];
+			for (auto k=0uz; k<std::size(Dense1K); k++) {
+				output[j] = std::fma(inter4[k], Dense1K[k][j], output[j]);
 			}
 			output[j] = std::exp(output[j]);
 			sum += output[j];
@@ -326,20 +308,21 @@ public:
 		dense1();
 	}
 };
+
 class Dnn {
 private:
 #include "weights1.cpp"
 	void
 	conv0(const unsigned char *src)
 	{
-		for (std::size_t i=0; i<std::size(inter0); i++) {
-			for (std::size_t j=0; j<std::size(inter0[i]); j++) {
-				for (std::size_t k=0; k<std::size(inter0[i][j]); k++) {
+		for (auto i=0uz; i<std::size(inter0); i++) {
+			for (auto j=0uz; j<std::size(inter0[i]); j++) {
+				for (auto k=0uz; k<std::size(inter0[i][j]); k++) {
 					inter0[i][j][k] = Conv0B[k];
-					for (std::size_t di=0; di<std::size(Conv0K); di++) {
-						for (std::size_t dj=0; dj<std::size(Conv0K[di]); dj++) {
-							for (std::size_t c=0; c<3; c++) {
-								inter0[i][j][k] += static_cast<float>(src[(height-i-di*2)*dib_width+(j+dj)*3+2-static_cast<int>(c)])*Conv0K[di][dj][c][k];
+					for (auto di=0uz; di<std::size(Conv0K); di++) {
+						for (auto dj=0uz; dj<std::size(Conv0K[di]); dj++) {
+							for (auto c=0uz; c<3uz; c++) {
+								inter0[i][j][k] = std::fmaf(src[(height-i-di*2uz)*dib_width+(j+dj)*3uz+2uz-c], Conv0K[di][dj][c][k], inter0[i][j][k]);
 							}
 						}
 					}
@@ -353,14 +336,14 @@ private:
 	void
 	conv1()
 	{
-		for (std::size_t i=0; i<std::size(inter1); i++) {
-			for (std::size_t j=0; j<std::size(inter1[i]); j++) {
-				for (std::size_t k=0; k<std::size(inter1[i][j]); k++) {
+		for (auto i=0uz; i<std::size(inter1); i++) {
+			for (auto j=0uz; j<std::size(inter1[i]); j++) {
+				for (auto k=0uz; k<std::size(inter1[i][j]); k++) {
 					inter1[i][j][k] = Conv1B[k];
-					for (std::size_t di=0; di<std::size(Conv1K); di++) {
-						for (std::size_t dj=0; dj<std::size(Conv1K[di]); dj++) {
-							for (std::size_t c=0; c<std::size(Conv1K[di][dj]); c++) {
-								inter1[i][j][k] += inter0[i+di*2][j+dj][c]*Conv1K[di][dj][c][k];
+					for (auto di=0uz; di<std::size(Conv1K); di++) {
+						for (auto dj=0uz; dj<std::size(Conv1K[di]); dj++) {
+							for (auto c=0uz; c<std::size(Conv1K[di][dj]); c++) {
+								inter1[i][j][k] = std::fma(inter0[i+di*2uz][j+dj][c], Conv1K[di][dj][c][k], inter1[i][j][k]);
 							}
 						}
 					}
@@ -371,14 +354,14 @@ private:
 	void
 	pooling()
 	{
-		for (std::size_t i=0; i<std::size(inter2); i++) {
-			for (std::size_t j=0; j<std::size(inter2[i]); j++) {
-				for (std::size_t k=0; k<std::size(inter2[i][j]); k++) {
+		for (auto i=0uz; i<std::size(inter2); i++) {
+			for (auto j=0uz; j<std::size(inter2[i]); j++) {
+				for (auto k=0uz; k<std::size(inter2[i][j]); k++) {
 					inter2[i][j][k] = 0.0f;
-					for (std::size_t di=0; di<4; di++) {
-						for (std::size_t dj=0; dj<4; dj++) {
-							if ( inter2[i][j][k] < inter1[i*4+di][j*4+dj][k] ) {
-								inter2[i][j][k] = inter1[i*4+di][j*4+dj][k];
+					for (auto di=0uz; di<4uz; di++) {
+						for (auto dj=0uz; dj<4uz; dj++) {
+							if ( inter2[i][j][k] < inter1[i*4uz+di][j*4uz+dj][k] ) {
+								inter2[i][j][k] = inter1[i*4uz+di][j*4uz+dj][k];
 							}
 						}
 					}
@@ -389,14 +372,14 @@ private:
 	void
 	conv2()
 	{
-		for (std::size_t i=0; i<std::size(inter3); i++) {
-			for (std::size_t j=0; j<std::size(inter3[i]); j++) {
-				for (std::size_t k=0; k<std::size(inter3[i][j]); k++) {
+		for (auto i=0uz; i<std::size(inter3); i++) {
+			for (auto j=0uz; j<std::size(inter3[i]); j++) {
+				for (auto k=0uz; k<std::size(inter3[i][j]); k++) {
 					inter3[i][j][k] = Conv2B[k];
-					for (std::size_t di=0; di<2; di++) {
-						for (std::size_t dj=0; dj<2; dj++) {
-							for (std::size_t c=0; c<std::size(Conv2K[di][dj]); c++) {
-								inter3[i][j][k] += inter2[i*2+di][j*2+dj][c]*Conv2K[di][dj][c][k];
+					for (auto di=0uz; di<2uz; di++) {
+						for (auto dj=0uz; dj<2uz; dj++) {
+							for (auto c=0uz; c<std::size(Conv2K[di][dj]); c++) {
+								inter3[i][j][k] = std::fma(inter2[i*2uz+di][j*2uz+dj][c], Conv2K[di][dj][c][k], inter3[i][j][k]);
 							}
 						}
 					}
@@ -410,13 +393,13 @@ private:
 	void
 	dense0()
 	{
-		for (std::size_t i=0; i<std::size(Dense0B); i++) {
+		for (auto i=0uz; i<std::size(Dense0B); i++) {
 			inter4[i] = Dense0B[i];
-			std::size_t j=0;
-			for (std::size_t a=0; a<std::size(inter3); a++) {
-				for (std::size_t b=0; b<std::size(inter3[a]); b++) {
-					for (std::size_t c=0; c<std::size(inter3[a][b]); c++) {
-						inter4[i] += inter3[a][b][c]*Dense0K[j++][i];
+			auto j=0uz;
+			for (auto a=0uz; a<std::size(inter3); a++) {
+				for (auto b=0uz; b<std::size(inter3[a]); b++) {
+					for (auto c=0uz; c<std::size(inter3[a][b]); c++) {
+						inter4[i] = std::fma(inter3[a][b][c], Dense0K[j++][i], inter4[i]);
 					}
 				}
 			}
@@ -429,10 +412,10 @@ private:
 	dense1()
 	{
 		float sum = 0.0f;
-		for (std::size_t j=0; j<11; j++) {
+		for (auto j=0uz; j<11uz; j++) {
 			output[j] = Dense1B[j];
 			for (std::size_t k=0; k<std::size(Dense1K); k++) {
-				output[j] += inter4[k]*Dense1K[k][j];
+				output[j] = std::fma(inter4[k], Dense1K[k][j], output[j]);
 			}
 			output[j] = std::exp(output[j]);
 			sum += output[j];
@@ -463,8 +446,8 @@ public:
 	void
 	invoke(const std::size_t i)
 	{
-		const std::size_t j=i%4;
-		const unsigned char *s = &src[j*width*3];
+		const std::size_t j=i%4uz;
+		const unsigned char *s = &src[j*width*3uz];
 		if (i<4) {
 			cnn[j].predict(s);
 		} else {
@@ -472,20 +455,20 @@ public:
 		}
 	}
 };
-static auto nn=std::make_unique<Nets>();
+static std::unique_ptr<Nets> nn;
 
 static void
 correct_values()
 {
 	if ( config.start_x < 0 ) {
 		config.start_x = 0;
-	} else if ( oip->w - window_width < config.start_x ) {
-		config.start_x = oip->w - window_width;
+	} else if ( oip->w - static_cast<int>(window_width) < config.start_x ) {
+		config.start_x = oip->w - static_cast<int>(window_width);
 	}
 	if ( config.start_y < 0 ) {
 		config.start_y = 0;
-	} else if ( oip->h - height < config.start_y ) {
-		config.start_y = oip->h - height;
+	} else if ( oip->h - static_cast<int>(height) < config.start_y ) {
+		config.start_y = oip->h - static_cast<int>(height);
 	}
 	if ( preview_frame < 0 ) {
 		preview_frame = 0;
@@ -497,7 +480,7 @@ correct_values()
 static bool
 check_video_size()
 {
-	if (oip->w < window_width || oip->h < height) {
+	if (oip->w < static_cast<int>(window_width) || oip->h < static_cast<int>(height)) {
 		std::wstring wstr = std::format(
 			L"動画は{}x{}以上のサイズが必要です(given: {}x{})．\n出力を中止します．",
 			window_width, height, oip->w, oip->h
@@ -506,7 +489,7 @@ check_video_size()
 		return true;
 	}
 	correct_values();
-	dib_width = (oip->w*3+3)&(~3);
+	dib_width = (static_cast<std::size_t>(oip->w)*3uz+3uz)&(~3uz);
 	return false;
 }
 static void
@@ -514,9 +497,10 @@ set_bmp(unsigned char *bmp, const int frame)
 {
 	const unsigned char *org = static_cast<unsigned char *>(oip->func_get_video(frame));
 	correct_values();
-	for (int y=0; y<height; y++) {
-		memcpy(bmp+y*window_byte_width,
-			org+(oip->h-config.start_y-height+y)*dib_width+config.start_x*3, window_byte_width);
+	for (auto y=0uz; y<height; y++) {
+		const auto yy = (static_cast<std::size_t>(oip->h-config.start_y)-height+y);
+		memcpy(&bmp[y*window_byte_width],
+			&org[yy*dib_width+static_cast<std::size_t>(config.start_x)*3uz], window_byte_width);
 	}
 }
 static INT_PTR CALLBACK
@@ -534,7 +518,7 @@ func_preview_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 		hBitmap = LoadBitmap(GetModuleHandleW(auo_filename.c_str()), "FFCK");
 		BITMAPINFO bmi = {
 			{sizeof(BITMAPINFOHEADER), window_width, height, 1, 24, BI_RGB, 0, 0, 0, 0, 0},
-			{0, 0, 0, 0}
+			{{0, 0, 0, 0}}
 		};
 		hBitmapD = CreateDIBSection(GetDC(hdlg), &bmi, DIB_RGB_COLORS, reinterpret_cast<void**>(&bmp), NULL, 0);
 		return TRUE;
@@ -615,12 +599,12 @@ set_estimates(const unsigned char *org)
 	dialog_flags.unmatch = false;
 	nn->src = org+((oip->h-config.start_y-height)*dib_width+config.start_x*3);
 	auto p = nn.get();
-	TP->parallel_do([&p](std::size_t i){p->invoke(i);}, 8);
-	for (int i=0; i<4; i++) {
-		int c_max_j=0, d_max_j=0, max_j=0;
+	TP->parallel_do([&p](std::size_t i){p->invoke(i);}, 8uz);
+	for (auto i=0uz; i<4uz; i++) {
+		std::size_t c_max_j=0uz, d_max_j=0uz, max_j=0uz;
 		float c_max=nn->cnn[i].output[c_max_j], d_max=nn->dnn[i].output[d_max_j];
 		float max=c_max*d_max;
-		for (int j=1; j<11; j++) {
+		for (auto j=1uz; j<11uz; j++) {
 			float now = nn->cnn[i].output[j];
 			if (c_max<now) {
 				c_max_j = j;
@@ -656,7 +640,7 @@ func_correct_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 		SetDlgItemTextA(hdlg, IDC_EDIT, est_str);
 		BITMAPINFO bmi = {
 			{sizeof(BITMAPINFOHEADER), window_width, height, 1, 24, BI_RGB, 0, 0, 0, 0, 0},
-			{0, 0, 0, 0}
+			{{0, 0, 0, 0}}
 		};
 		hBitmapD = CreateDIBSection(GetDC(hdlg), &bmi, DIB_RGB_COLORS, reinterpret_cast<void**>(&bmp), NULL, 0);
 		return TRUE;
@@ -696,6 +680,7 @@ BOOL
 func_init()
 {
 	TP = std::make_unique<ThreadPool>(n_th);
+	nn = std::make_unique<Nets>();
 	return TRUE;
 }
 
@@ -703,6 +688,7 @@ BOOL
 func_exit()
 {
 	nn.reset(nullptr);
+	TP.reset(nullptr);
 	return TRUE;
 }
 
