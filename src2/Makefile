@@ -30,7 +30,7 @@ $(OBJ): $(SRCS) $(HDRS) $(SUBSRCS)
 	$(CXX) $(CXXWFLAGS) $(CXXFLAGS) $(INCLUDES) -o $(OBJ) $(SRC)
 
 .rc.res:
-	windres --input-format=rc --output-format=coff -o $@ $<
+	windres -c 65001 --input-format=rc --output-format=coff -o $@ $<
 
 $(RES): resource_definition.h
 
