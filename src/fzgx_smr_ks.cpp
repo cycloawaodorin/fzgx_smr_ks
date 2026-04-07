@@ -802,7 +802,7 @@ n_th_correction()
 		nt = 8;
 	}
 	n_th = static_cast<std::size_t>(nt);
-	if ( TP->get_size() != n_th ) {
+	if ( !TP || ( TP->get_size() != n_th ) ) {
 		TP = std::make_unique<ThreadPool>(n_th);
 	}
 }

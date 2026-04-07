@@ -157,7 +157,7 @@ public:
 		return size;
 	}
 };
-static std::unique_ptr<ThreadPool> TP;
+static std::unique_ptr<ThreadPool> TP = std::make_unique<ThreadPool>(n_th);
 
 class Cnn {
 private:
@@ -439,7 +439,6 @@ static std::unique_ptr<Nets> nn;
 EXTERN_C bool
 InitializePlugin(DWORD version)
 {
-	TP = std::make_unique<ThreadPool>(n_th);
 	nn = std::make_unique<Nets>();
 	return true;
 }
@@ -797,7 +796,7 @@ n_th_correction()
 		nt = 8;
 	}
 	n_th = static_cast<std::size_t>(nt);
-	if ( TP->get_size() != n_th ) {
+	if ( !TP || ( TP->get_size() != n_th ) ) {
 		TP = std::make_unique<ThreadPool>(n_th);
 	}
 }
