@@ -29,6 +29,9 @@
 ## 1.0.8 2026/03/04
 - Implemented ThreadPool.
 
+## 1.0.9 2026/04/07
+- Cumulative coding amendment.
+
 ## 2.0.0 2026/02/05
 - The first version for AviUtl ExEdit2.
 
@@ -41,3 +44,7 @@
 
 ## 2.0.3 2026/03/04
 - Implemented ThreadPool that makes it fast in multithread-mode.
+
+## 2.0.4 2026/04/07
+- Use clang instead of g++ for the compiler / linker.
+- Cumulative coding amendment.
