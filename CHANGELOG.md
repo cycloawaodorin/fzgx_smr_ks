@@ -32,6 +32,9 @@
 ## 1.0.9 2026/04/07
 - Cumulative coding amendment.
 
+## 1.0.10 2026/04/08
+- Minor adjustments.
+
 ## 2.0.0 2026/02/05
 - The first version for AviUtl ExEdit2.
 
@@ -48,3 +51,6 @@
 ## 2.0.4 2026/04/07
 - Use clang instead of g++ for the compiler / linker.
 - Cumulative coding amendment.
+
+## 2.0.5 2026/04/08
+- Minor adjustments.

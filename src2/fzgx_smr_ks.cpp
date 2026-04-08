@@ -5,6 +5,7 @@
 #include <condition_variable>
 #include <functional>
 #include <atomic>
+#include <exception>
 #include <format>
 #include <fstream>
 #include "config2.hpp"
@@ -72,7 +73,7 @@ static struct {
 	bool cnn_low, unmatch;
 } dialog_flags;
 static char est_str[5]={0, 0, 0, 0, 0};
-static std::size_t n_th=8;
+static std::size_t n_th=8uz;
 
 class ThreadPool {
 private:
@@ -83,11 +84,12 @@ private:
 		bool ready=false;
 	};
 	std::size_t size;
-	bool alive=true;
 	std::unique_ptr<Thread[]> threads;
 	std::function<void(std::size_t)> func;
+	std::exception_ptr ep;
 	std::atomic<std::size_t> current_i=0uz;
 	std::size_t max_i=0uz;
+	bool alive=true;
 	void
 	listen(Thread *th)
 	{
@@ -98,8 +100,13 @@ private:
 			}
 			for ( std::size_t i=max_i; current_i<max_i; ) { // ジョブの取り出しと実行
 				i = current_i++;
-				if ( i < max_i ) {
-					func(i);
+				try {
+					if ( i < max_i ) {
+						func(i);
+					}
+				} catch (...) { // func からの例外を捕捉
+					ep = std::current_exception();
+					current_i = max_i;
 				}
 			}
 			{ // 全ジョブ完了
@@ -110,7 +117,7 @@ private:
 		}
 	}
 public:
-	ThreadPool(std::size_t s=std::thread::hardware_concurrency()) : size(s)
+	explicit ThreadPool(std::size_t s=std::thread::hardware_concurrency()) : size(s)
 	{
 		threads = std::make_unique<Thread[]>(size);
 		for (auto i=0uz; i<size; i++) {
@@ -150,6 +157,9 @@ public:
 			threads[i].cv.wait(lk, [this, i]{ return !(threads[i].ready); });
 		}
 		func = nullptr;
+		if ( ep ) {
+			std::rethrow_exception(std::exchange(ep, nullptr));
+		}
 	}
 	std::size_t
 	get_size()
@@ -546,6 +556,7 @@ func_preview_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 		} else if (lwparam == IDC_Y) {
 			GetDlgItemTextW(hdlg, IDC_Y, wstr.data(), static_cast<int>(wstr.size()));
 			config.start_y = std::stoi(wstr);
+			correct_values();
 		} else if (lwparam == IDC_YLEFT) {
 			config.start_y -= 1;
 			correct_values();
@@ -553,11 +564,11 @@ func_preview_proc(HWND hdlg, UINT umsg, WPARAM wparam, LPARAM lparam)
 		} else if (lwparam == IDC_YRIGHT) {
 			config.start_y += 1;
 			correct_values();
-			correct_values();
 			SetDlgItemTextW(hdlg, IDC_Y, std::format(L"{}", config.start_y).c_str());
 		} else if (lwparam == IDC_FRAME) {
 			GetDlgItemTextW(hdlg, IDC_FRAME, wstr.data(), static_cast<int>(wstr.size()));
 			preview_frame = std::stoi(wstr);
+			correct_values();
 		} else if (lwparam == IDC_FLEFT) {
 			preview_frame -= 1;
 			correct_values();
@@ -705,7 +716,7 @@ func_output(OUTPUT_INFO *oip_org)
 			}
 		}
 		if (config.frame) {
-			str = std::format("{}{:c}{:s}\n", i+config.offset, separators[static_cast<int>(config.sep_idx)], est_str);
+			str = std::format("{}{:c}{:s}\n", i+config.offset, separators[static_cast<std::size_t>(config.sep_idx)], est_str);
 		} else {
 			str = std::format("{:s}\n", est_str);
 		}
@@ -726,7 +737,7 @@ InitializeConfig(CONFIG_HANDLE* ch)
 }
 
 static void
-set_offset_enableness(const HWND &hdlg, const bool &val)
+set_offset_enableness(HWND hdlg, bool val)
 {
 	EnableWindow(GetDlgItem(hdlg, IDC_OFFSET), val);
 	EnableWindow(GetDlgItem(hdlg, IDC_SPACE), val);
@@ -735,21 +746,21 @@ set_offset_enableness(const HWND &hdlg, const bool &val)
 }
 
 static void
-set_dialog_enableness(const HWND &hdlg, const bool &val)
+set_dialog_enableness(HWND hdlg, bool val)
 {
 	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL), val);
 	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_EVAL_LIM), val);
 }
 
 static void
-set_dialog_enableness_ex(const HWND &hdlg, const bool &val, const bool &val2)
+set_dialog_enableness_ex(HWND hdlg, bool val, bool val2)
 {
 	set_dialog_enableness(hdlg, val&&val2);
 	EnableWindow(GetDlgItem(hdlg, IDC_DIALOG_ALWAYS), val);
 }
 
 static void
-init_dialog(const HWND &hdlg)
+init_dialog(HWND hdlg)
 {
 	std::wstring wstr = std::format(L"{}", config.start_x);
 	SetDlgItemTextW(hdlg, IDC_X, wstr.c_str());
@@ -771,7 +782,7 @@ init_dialog(const HWND &hdlg)
 	SendMessage(GetDlgItem(hdlg, IDC_DIALOG), BM_SETCHECK, config.dialog, 0);
 	set_dialog_enableness_ex(hdlg, config.dialog, !config.dialog_always);
 	SendMessage(GetDlgItem(hdlg, IDC_DIALOG_EVAL), BM_SETCHECK, config.dialog_eval, 0);
-	int delim_dec = static_cast<int>(std::round((config.dialog_eval_limit)*1000.0f));
+	int delim_dec = std::lrint((config.dialog_eval_limit)*1000.0f);
 	int delim_int = delim_dec/1000;
 	wstr = std::format(L"{}.{:03}", delim_int, delim_dec-(delim_int*1000));
 	SetDlgItemTextW(hdlg, IDC_DIALOG_EVAL_LIM, wstr.c_str());
@@ -802,7 +813,7 @@ n_th_correction()
 }
 
 static void
-setup_config(const HWND &hdlg)
+setup_config(HWND hdlg)
 {
 	std::wstring wstr(15, L'\0');
 	GetDlgItemTextW(hdlg, IDC_X, wstr.data(), static_cast<int>(wstr.size()));
