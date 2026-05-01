@@ -1,27 +1,18 @@
 # Usage
-This document provides a brief instruction to use "SMR for F-ZERO GX," an output plugin of AviUtl.
+This document provides a brief instruction to use "SMR for F-ZERO GX," an output plugin of AviUtl ExEdit2.
 
-## AviUtl
-AviUtl is a video filtering tool for Windows. It is not so difficult to use "SMR for F-ZERO GX." However, AviUtl is complex because of its multifunctionality and only Japanese language is available. Thus, this section explains basic functions of AviUtl.
+## AviUtl ExEdit2
+AviUtl ExEdit2 is a video filtering tool for Windows. It is not so difficult to use "SMR for F-ZERO GX."
 
 ### Downloading and Installation
-AviUtl can be downloaded from http://spring-fragrance.mints.ne.jp/aviutl/.
+AviUtl ExEdit2 can be downloaded from http://spring-fragrance.mints.ne.jp/aviutl/.
 
-![aviutl](./image/aviutl.png)
+AviUtl ExEdit2 is under development, so no stable version is available as of April, 2026. Using latest versions is recommended, but "SMR for F-ZERO GX" can be malfunction with untested version of AviUtl ExEdit2. Feel free to [open issues on GitHub](https://github.com/cycloawaodorin/fzgx_smr_ks/issues) when you find bugs or you have requests, questions.
 
-Version 1.10 is the latest and it is best for "SMR for F-ZERO GX."  (as of 19-Oct-2021)
-
-Just unzip the downloaded archive file for installation.
+Unzip the downloaded archive file or execute the installer for installation.
 
 ### Installing Plugins
-Make `plugins` directory at the same hierarchy of aviutl.exe. Copy AUO (output plugins), AUI (input plugins) or AUF (filter plugins) files into the `plugins` directory.
-
-```text
-┏ plugins
-┃ ┣ fzgx_smr_ks.auo
-┃ ┗ (other plugin files)
-┣ aviutl.exe
-```
+Drag-and-drop the auo2 (output plugins), aui2 (input plugins), auf2 (filter plugins), aux2 (auxiliary plugins), au2pkg.zip (packaged archive) into the preview window of running AviUtl ExEdit2. The files will be installed into `%ProgramData%/aviutl2` directory.
 
 ### Opening Videos
 Drag-and-drop the video file onto the `aviutl.exe` window. Without input plugins, AviUtl can only open AVI files. Thus, we recommend to install [L-SMASH Works](#l-smash-works) to open such as MP4 files.
@@ -31,15 +22,9 @@ Use slider or frame-by-frame move button to change the current frame. Set the st
 
 ![frame_controller](./image/frame_control.png)
 
-### Global System Setting
-Open global system setting dialog box through "ファイル / File" > "環境設定 / Environment Setting" > "システム設定 / System Setting." We recommend to set "最大画像サイズ / Max Resolution" and "最大フレーム数 / Max Number of Frames" to large enough values. "最大画像サイズ / Max Resolution" is the buffer size. AviUtl can only handle images less than or equal to this size. If this value is set to a larger value, AviUtl requires more memory. The max available value of "最大フレーム数 / Max Number of Frames" is 320,000 and this will be appropriate. Built-in resize filter can only resize to the resolutions listed on "リサイズ設定の解像度リスト/ Resize Resolution List." These setting are applied after restart.
-
-![system_setting](./image/system_setting0.png)
-![system_setting_db](./image/system_setting.png)
-
 ## Using SMR for F-ZERO GX
 ### Plugin Output
-[Open a video file](#opening_videos), [set output frame range](setting_output_frame_range), and then open the plugin output dialog box through "ファイル / File" > "プラグイン出力 / Plugin Output" > "SMR for F-ZERO GX."
+[Open a video file](#opening-videos), [set output frame range](#setting-output-frame-range), and then open the plugin output dialog box through "ファイル / File" > "プラグイン出力 / Plugin Output" > "SMR for F-ZERO GX."
 
 ![plugin_output](./image/plugin_output0.png)
 ![plugin_output_db](./image/plugin_output.png)
@@ -51,7 +36,7 @@ See the [Setting section of README.md](README.md#setting) for detail.
 
 ![setting_db](./image/setting.png)
 
-### <a name="preview_dialog_box"></a>Preview Dialog Box
+### Preview Dialog Box
 See the [Preview dialog box section of README.md](README.md#preview) for detail.
 
 ![preview_db](./image/preview.png)
@@ -65,7 +50,7 @@ The confirmation dialog box will be shown when the [specified conditions](README
 ![confirmation_db](./image/confirmation.png)
 
 ### Resizing
-If you want to extract speed values from videos other than 720x480 videos for 16:9 monitors, you need to resize before using this plugin. To resize videos on AviUtl, you can use "クリッピング&リサイズ / Clipping and Resize" built-in filter or [Lanczos 3-lobed 拡大縮小](#lanczos3) plugin filter. To use these filters, open setting window through "設定 / Setting" > filter name, and check the right-top activation checkbox on the filter setting window. If you use resize filters, make sure that the resizing and window position are appropriate, by the [Preview Dialog Box](#preview_dialog_box).
+If you want to extract speed values from videos other than 720x480 videos for 16:9 monitors, you need to resize before using this plugin. To resize videos on AviUtl, you can use "クリッピング&リサイズ / Clipping and Resize" built-in filter or [resize_ks](#resize_ks) plugin filter. To use these filters, open setting window through "設定 / Setting" > filter name, and check the right-top activation checkbox on the filter setting window. If you use resize filters, make sure that the resizing and window position are appropriate, by the [Preview Dialog Box](#preview-dialog-box).
 
 ![clipping_resize]./clipping_resize0.png)
 ![clipping_resize_w](./clipping_resize.png)
@@ -74,5 +59,5 @@ If you want to extract speed values from videos other than 720x480 videos for 16
 ### [L-SMASH Works](https://github.com/Mr-Ojii/L-SMASH-Works-Auto-Builds/releases/latest)
 An input plugin which can read various video formats including MP4, MOV, QT, 3gp, 3g2, F4V and M4A. revXXX with largest XXX is recommended.
 
-### <a href="http://www.marumo.ne.jp/auf/#lanczos3" name="lanczos3">Lanczos 3-lobed 拡大縮小</a>
+### [resize_ks](https://github.com/cycloawaodorin/resize_ks)
 A filter plugin which can resize arbitrary resolutions.
