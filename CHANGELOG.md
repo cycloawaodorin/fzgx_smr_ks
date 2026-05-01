@@ -35,22 +35,5 @@
 ## 1.0.10 2026/04/08
 - Minor adjustments.
 
-## 2.0.0 2026/02/05
-- The first version for AviUtl ExEdit2.
-
-## 2.0.1 2026/02/12
-- Change the .rc encoding into UTF-8.
-
-## 2.0.2 2026/03/02
-- Use std::make_unique instead of new.
-- Add threadless mode and it is used by default.
-
-## 2.0.3 2026/03/04
-- Implemented ThreadPool that makes it fast in multithread-mode.
-
-## 2.0.4 2026/04/07
-- Use clang instead of g++ for the compiler / linker.
-- Cumulative coding amendment.
-
-## 2.0.5 2026/04/08
-- Minor adjustments.
+## 1.0.11 2026/05/01
+- Isolated the branch.
