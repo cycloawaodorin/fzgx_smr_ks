@@ -25,6 +25,45 @@
 
 //----------------------------------------------------------------------------------
 
+// プロジェクトファイル構造体
+// プロジェクトファイルのロード、セーブのコールバックや編集のコールバック関数内で利用出来ます
+// プロジェクトの保存データはプラグイン毎のデータ領域になります
+struct PROJECT_FILE {
+	// プロジェクトに保存されている文字列(UTF-8)を取得します
+	// key		: キー名(UTF-8)
+	// 戻り値	: 取得した文字列へのポインタ (未設定の場合はnullptr)
+	//			  ※コールバック処理の終了まで有効
+	LPCSTR (*get_param_string)(LPCSTR key);
+
+	// プロジェクトに文字列(UTF-8)を保存します
+	// key		: キー名(UTF-8)
+	// value	: 保存する文字列(UTF-8)
+	void (*set_param_string)(LPCSTR key, LPCSTR value);
+
+	// プロジェクトに保存されているバイナリデータを取得します
+	// key		: キー名(UTF-8)
+	// data		: 取得するデータの格納先へのポインタ
+	// size		: 取得するデータのサイズ (保存されているサイズと異なる場合は失敗します)
+	// 戻り値	: 正しく取得出来た場合はtrue
+	bool (*get_param_binary)(LPCSTR key, void* data, int size);
+
+	// プロジェクトにバイナリデータを保存します
+	// key		: キー名(UTF-8)
+	// data		: 保存するデータへのポインタ
+	// size		: 保存するデータのサイズ (4096バイト以下)
+	void (*set_param_binary)(LPCSTR key, void* data, int size);
+
+	// プロジェクトに保存されているデータを全て削除します
+	void (*clear_params)();
+
+	// プロジェクトファイルのパスを取得します
+	// key		: キー名(UTF-8)
+	// 戻り値	: プロジェクトファイルパスへのポインタ (ファイルパスは未設定の場合があります)
+	//			  ※コールバック処理の終了まで有効
+	LPCWSTR (*get_project_file_path)();
+
+};
+
 // 出力情報構造体
 struct OUTPUT_INFO {
 	int flag;			//	フラグ
@@ -79,10 +118,12 @@ struct OUTPUT_INFO {
 // 出力プラグイン構造体
 struct OUTPUT_PLUGIN_TABLE {
 	int flag;				// フラグ
-	static constexpr int FLAG_VIDEO = 1; //	画像をサポートする
-	static constexpr int FLAG_AUDIO = 2; //	音声をサポートする
-	static constexpr int FLAG_IMAGE = 4; //	静止画出力のみサポートする (OUTPUT_INFOが1フレーム出力になります)
+	static constexpr int FLAG_VIDEO = 1; // 画像をサポートする
+	static constexpr int FLAG_AUDIO = 2; // 音声をサポートする
+	static constexpr int FLAG_IMAGE = 4; // 静止画出力のみサポートする (OUTPUT_INFOが1フレーム出力になります)
 										 // ※静止画出力では出力完了時の通知やサウンド再生をしません
+	static constexpr int FLAG_PROJECT_CONFIG = 8; // プロジェクトファイルの設定保持をサポートする
+												  // ※プロジェクトファイル側に出力設定を保持する場合に指定します
 	LPCWSTR name;			// プラグインの名前
 	LPCWSTR filefilter;		// ファイルのフィルタ
 	LPCWSTR information;	// プラグインの情報
@@ -96,4 +137,13 @@ struct OUTPUT_PLUGIN_TABLE {
 	// 出力設定のテキスト情報を取得する時に呼ばれる関数へのポインタ (nullptrなら呼ばれません)
 	// 戻り値	: 出力設定のテキスト情報(次に関数が呼ばれるまで内容を有効にしておく)
 	LPCWSTR (*func_get_config_text)();
+
+	// プロジェクトファイル側から出力設定の読み込み要求時に呼ばれる関数へのポインタ (FLAG_PROJECT_CONFIGが有効の時のみ呼ばれます)
+	// project	: プロジェクトファイル構造体へのポインタ
+	bool (*func_load_project_config)(PROJECT_FILE* project);
+
+	// プロジェクトファイル側への出力設定の書き込み要求時に呼ばれる関数へのポインタ (FLAG_PROJECT_CONFIGが有効の時のみ呼ばれます)
+	// project	: プロジェクトファイル構造体へのポインタ
+	bool (*func_save_project_config)(PROJECT_FILE* project);
+
 };
