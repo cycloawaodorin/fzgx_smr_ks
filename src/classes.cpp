@@ -86,7 +86,7 @@ public:
 	}
 	std::size_t
 	get_size()
-	{
+	const {
 		return size;
 	}
 };
