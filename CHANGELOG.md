@@ -42,3 +42,6 @@
 
 ## 2.0.6 2026/05/01
 - Remove sources for AviUtl1.
+
+## 2.0.7 2026/05/13
+- Supported project-specific config saves, introduced in beta45.
