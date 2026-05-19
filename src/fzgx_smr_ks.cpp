@@ -527,8 +527,7 @@ func_config(HWND hwnd, HINSTANCE dll_hinst)
 static bool
 func_load_project_config(PROJECT_FILE* project)
 {
-	project->get_param_binary("CONFIG", reinterpret_cast<void *>(&config), static_cast<int>(sizeof(config)));
-	return true;
+	return project->get_param_binary("CONFIG", reinterpret_cast<void *>(&config), static_cast<int>(sizeof(config)));
 }
 
 static bool
